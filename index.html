@@ -1145,27 +1145,75 @@ function syncScannedCats(){
   setExploreItems(picked.concat(manual));
 }
 
-/** 抓首页，自动猜搜索接口 */
+/** 抓首页，自动猜搜索接口（支持 GET 和 POST 表单） */
+const SEARCH_KEY_NAMES = /^(q|key|keyword|wd|searchkey|searchword|searchname|s|query|kw|keyboard|sn|bookname)$/i;
+
+function formSearchUrl(f, baseUrl, siteCharset){
+  const method = (f.getAttribute('method') || 'GET').toUpperCase();
+  const base0 = baseUrl.replace(/\/+$/, '');
+  let act = f.getAttribute('action') || '';
+  if(!act){
+    try{ act = new URL(baseUrl).pathname + new URL(baseUrl).search || '/'; }catch(e){ act = '/'; }
+  }
+  const abs = absUrl(act, baseUrl);
+  let path = (base0 && abs.startsWith(base0 + '/')) ? abs.slice(base0.length) : abs;
+
+  const parts = [];
+  let kname = null;
+  [...f.querySelectorAll('input')].forEach(i=>{
+    const n = (i.getAttribute('name') || '').trim();
+    if(!n) return;
+    const type = (i.getAttribute('type') || 'text').toLowerCase();
+    if(type === 'submit' || type === 'button' || type === 'image' || type === 'file') return;
+    if(!kname && SEARCH_KEY_NAMES.test(n)){ kname = n; parts.push(n + '={{key}}'); return; }
+    if(!kname && type === 'text' && !/^(page|typeid|classid|producelist|order|sort)$/i.test(n)){
+      kname = n; parts.push(n + '={{key}}'); return;
+    }
+    const v = i.getAttribute('value') || '';
+    parts.push(n + '=' + encodeURIComponent(v));
+  });
+  if(!kname) return null;
+
+  if(method === 'POST'){
+    const opt = { method:'POST', body: parts.join('&') };
+    if(/^gb/i.test(siteCharset)) opt.charset = 'gbk';
+    return { url: path + ',' + JSON.stringify(opt), post: true, kname, how: '已按网站搜索框生成 POST 搜索（参数 ' + kname + '）' };
+  }
+  return { url: path + (path.includes('?') ? '&' : '?') + parts.join('&'), post: false, kname, how: '已按网站搜索框生成搜索地址（参数 ' + kname + '）' };
+}
+
 async function sniffSearch(baseUrl){
   const pack = await grabDoc(baseUrl);
   const doc = pack.doc;
-  const forms = [...doc.querySelectorAll('form')];
-  for(const f of forms){
-    const action = (f.getAttribute('action')||'').toLowerCase();
-    const inputs = [...f.querySelectorAll('input')];
-    const qi = inputs.find(i=>/^(q|key|keyword|wd|searchkey|searchword|s|query|kw)$/i.test(i.getAttribute('name')||''));
-    if(qi && (/search|so|s\.php|biqu/i.test(action) || inputs.length)){
-      const name = qi.getAttribute('name');
-      let action2 = f.getAttribute('action') || '';
-      if(!/^https?:|^\//.test(action2)) action2 = '/' + action2.replace(/^\.\//,'');
-      return { url: action2 + (action2.includes('?')?'&':'?') + name + '={{key}}', how:'首页搜索框（参数 '+name+'）' };
-    }
+  const siteCharset = ((pack.html || '').match(/charset\s*=\s*["']?\s*([\w-]+)/i) || [])[1] || '';
+
+  // ① 表单打分，挑最像"搜索"的那个
+  let best = null;
+  for(const f of doc.querySelectorAll('form')){
+    const inputs = [...f.querySelectorAll('input')].filter(i=> (i.getAttribute('name')||'').trim());
+    if(!inputs.length) continue;
+    const action = f.getAttribute('action') || '';
+    const ph = inputs.map(i=> i.getAttribute('placeholder') || '').join(' ');
+    const btn = [...f.querySelectorAll('input[type=submit],button')].map(b=> clean(b.value || b.textContent || '')).join(' ');
+    let score = 0;
+    if(inputs.some(i=> SEARCH_KEY_NAMES.test(i.getAttribute('name')||''))) score += 4;
+    if(/search|so\b|so\.|s\.php|e\/search/i.test(action)) score += 3;
+    if(/搜索|输入|关键词|书名/i.test(ph + ' ' + btn)) score += 3;
+    if((f.getAttribute('method')||'').toUpperCase() === 'POST') score += 1;
+    if(score >= 3 && (!best || score > best.score)) best = { f, score };
   }
+  if(best){
+    const r = formSearchUrl(best.f, baseUrl, siteCharset);
+    if(r) return r;
+  }
+
+  // ② 首页里的搜索入口链接
   const links = [...doc.querySelectorAll('a')].map(a=>absUrl(a.getAttribute('href')||'', baseUrl))
     .filter(u=>/search|so\.php|s\?/i.test(u));
   if(links.length){
-    const u = new URL(links[0]);
-    return { url: links[0].replace(baseUrl.replace(/\/+$/,''), ''), how:'首页里的搜索入口' };
+    const base0 = baseUrl.replace(/\/+$/, '');
+    const p = links[0].startsWith(base0 + '/') ? links[0].slice(base0.length) : links[0];
+    return { url: p, post: false, how: '用了首页里的搜索入口链接（可能还需要手动补 {{key}}）' };
   }
   return null;
 }
@@ -1196,6 +1244,7 @@ function openHtmlModal(url, cb){
   $('#hmText').value = '';
   $('#hmHint').innerHTML =
     '在电脑上打开目标网页 → 按 <b>Ctrl+U</b>（Mac 是 ⌘+Option+U）看源码 → <b>Ctrl+A</b> 全选、<b>Ctrl+C</b> 复制 → 粘到下框。<br>' +
+    '<b>POST 搜索的网站</b>（搜什么书网址都不变）：先在电脑上正常搜一次书，等结果出来后在<b>结果页</b>按 Ctrl+U 复制。<br>' +
     '也可以点右上角「选文件」导入保存好的 .html。粘完点下面的按钮，点选功能完全一样。';
   $('#htmlModal').classList.add('on');
 }
@@ -1331,6 +1380,14 @@ function hl(el){
 function bindFrame(f){
   const d = f.contentDocument;
   if(!d){ toast('网页加载受限，可点「重新加载」或换代理'); return; }
+  // 页面几乎是空的 → 给出针对性提示（POST 搜索站 / 脚本加载常见）
+  try{
+    const txt = clean((d.body && d.body.textContent) || '');
+    if(txt.length < 40){
+      const h = $('#pickHint');
+      if(h) h.innerHTML = '<span style="color:var(--warn)">⚠️ 这个网页打开后几乎是空的。常见原因：① 网站用 POST 搜索，直接开网址不会出结果——请在<b>电脑浏览器</b>里搜一次书，在结果页按 Ctrl+U 复制源码，点右上角「手动粘贴网页」贴进来，点选功能完全一样；② 页面内容靠脚本加载（同理手动粘贴）。</span>';
+    }
+  }catch(e){}
   try{
     d.documentElement.style.cursor = 'crosshair';
   }catch(e){}
@@ -1456,6 +1513,15 @@ const TGT = {
 function realSearchUrl(keyword){
   const base = (S.bookSourceUrl||'').replace(/\/+$/,'');
   let u = S.searchUrl || '';
+  // Legado 的 POST/选项写法：url,{json} —— 测试时只取网址部分
+  const m = u.match(/^(.*?),(\{[\s\S]*\})$/);
+  if(m){
+    u = m[1];
+    try{
+      const opt = JSON.parse(m[2]);
+      if(opt && opt.body) S._postBody = opt.body.split('{{key}}').join(encodeURIComponent(keyword || '小说'));
+    }catch(e){}
+  }
   u = u.split('{{key}}').join(encodeURIComponent(keyword || '小说'))
        .split('{{page}}').join('1');
   if(!/^https?:/i.test(u)) u = base + (u.startsWith('/') ? '' : '/') + u;
@@ -1573,6 +1639,7 @@ async function testProxies(){
 /* ---- 第 1 步 ---- */
 function wiz1(){
   const cur = clean(S.searchUrl);
+  const isPost = /"method"\s*:\s*"POST"/i.test(cur);
   return `
   <div class="wiz-t">这个网站怎么搜书？</div>
   <div class="wiz-d">打开这个网站，<b>随便搜一本书</b>（你正在追的最好），搜出结果后把<b>整个网页的网址</b>复制过来贴下面。工具会自动把书名的位置换成占位符，以后搜任何书都能用。</div>
@@ -1592,6 +1659,23 @@ function wiz1(){
     </div>
   </div>
   <div class="picked ${cur?'':'miss'} mt12"><div class="pk">搜索地址</div><div class="pv">${cur?esc(cur):'还没生成'}</div></div>
+  ${isPost?`<div class="note ok mt12"><span class="ico">✓</span><div>这个网站是 <b>POST 搜索</b>（搜什么书网址都不变），工具已经按它的搜索框生成好了，App 里能正常搜。<b>注意：网页版测试可能搜不到结果，以 App 里实际效果为准。</b></div></div>`:''}
+  <details class="mt12">
+    <summary>搜不同的书，网址完全不变？点这里</summary>
+    <div class="card mt8">
+      <div class="tiny">这种网站（常见 <code class="mono">/s.php</code> 结尾）用的是 <b>POST 搜索</b>：关键词不在网址里，而是藏在提交的内容里。两种办法：</div>
+      <div class="ol">
+        <li>直接点上面的「<b>自动生成搜索地址</b>」——发现网址里没书名时，工具会自动去网站首页<b>分析搜索框</b>，把参数名找出来，多半能一次成功。</li>
+        <li>分析不出来就手动填：在下面填上网站的搜索参数名（不知道就先试 <code class="mono">searchkey</code>，不行再试 <code class="mono">keyword</code>、<code class="mono">keyboard</code>）。</li>
+      </div>
+      <div class="f mt10">
+        <div class="f-h"><div class="f-l">搜索参数名</div></div>
+        <input type="text" id="postKey" class="mono" placeholder="searchkey">
+        <div class="f-tip">生成的是 Legado 的 POST 格式：<code class="mono">/s.php,{"method":"POST","body":"参数={{key}}"}</code></div>
+      </div>
+      <button class="btn sm wide" data-wz="genPost">按 POST 方式生成</button>
+    </div>
+  </details>
   <div class="note mt12"><span class="ico">🤔</span><div><b>找不到搜索结果页？</b>网站首页顶部一般有个放大镜，点开输入书名回车，页面跳转后的那个网址就是。</div></div>`;
 }
 
@@ -1948,21 +2032,39 @@ async function handleWz(a){
     S._kw = kw; S._realSearchPage = purl;
     if(!purl) return toast('先把搜索结果页的网址贴进来');
     const r = buildSearchUrl(purl, kw);
-    if(!r.ok) return toast('没在网址里找到书名，请在上面填「你刚才搜的书名」再试');
-    setS('searchUrl', r.url); saveLib(); renderWizard();
-    toast('搜索地址已生成 ✓');
+    if(r.ok){
+      setS('searchUrl', r.url); saveLib(); renderWizard();
+      return toast('搜索地址已生成 ✓');
+    }
+    // 网址里没书名 → 大概率是 POST 搜索（网址不变），去网站首页分析搜索框
+    toast('网址里没找到书名，正在分析网站的搜索方式…');
+    return handleWz('sniff');
+  }
+
+  if(a === 'genPost'){
+    // 手动兜底：按用户填的参数名生成 POST 搜索地址
+    const purl = clean($('#wzPage') && $('#wzPage').value) || clean(S.bookSourceUrl);
+    const name = clean($('#postKey') && $('#postKey').value) || 'searchkey';
+    if(!purl) return toast('先把搜索页网址填上');
+    let path = purl;
+    const base = (clean(S.bookSourceUrl) || '').replace(/\/+$/, '');
+    if(base && path.startsWith(base + '/')) path = path.slice(base.length);
+    if(!path.startsWith('/')) path = '/' + path.replace(/^https?:\/\/[^/]+/i, '');
+    const url = path + ',' + JSON.stringify({ method:'POST', body: name + '={{key}}' });
+    setS('searchUrl', url); saveLib(); renderWizard();
+    toast('已生成 POST 搜索地址（参数 ' + name + '）');
     return;
   }
 
   if(a === 'sniff'){
     if(!clean(S.bookSourceUrl)) return toast('先把网站首页填上');
-    showBusy('正在分析网站…');
+    showBusy('正在分析网站的搜索方式…');
     try{
       const r = await sniffSearch(S.bookSourceUrl);
       hideBusy();
-      if(!r) return toast('没自动找到搜索框，请手动搜一次再粘贴网址');
+      if(!r) return toast('没自动认出搜索方式，可展开「网址里没有书名」手动填参数名');
       setS('searchUrl', r.url); saveLib(); renderWizard();
-      toast('已猜到一个搜索地址，可以微调');
+      toast(r.how);
     }catch(e){ hideBusy(); toast(e.message); }
     return;
   }
@@ -2126,9 +2228,11 @@ function booksHtml(books){
 }
 
 function renderTest(){
+  const isPost = /"method"\s*:\s*"POST"/i.test(S.searchUrl || '');
   $('#pageTest').innerHTML = `
   <div class="wiz-t">跑一遍，看能不能用</div>
   <div class="wiz-d">工具会真的去这个网站搜一次书、打开目录、抓一章正文；配了分类的话，还会翻一遍分类页。<b>约 15 秒</b>，全部通过就说明书源可用。</div>
+  ${isPost?`<div class="note warn"><span class="ico">ℹ️</span><div>这个网站是 <b>POST 搜索</b>（关键词不在网址里）。网页版测试的「搜索书籍」一步很可能拿不到结果——<b>这不代表书源不能用</b>，导出后在 App 里搜一次书验证即可。</div></div>`:''}
   <div class="card">
     <div class="searchbar">
       <input id="testKw" placeholder="搜什么书？例：斗破苍穹" value="${esc(S._kw||'')}">
@@ -2141,16 +2245,20 @@ function renderTest(){
 }
 
 function errBox(e, step){
-  const tips = {
+  const isPost = /"method"\s*:\s*"POST"/i.test(S.searchUrl || '');
+  let tips = {
     1:['搜索地址里的关键词没被替换（检查有没有 {{key}}）','网站把搜索结果放在 iframe 或需要登录','搜索地址填成了首页'],
     2:['详情链接规则取到的是空值','网站对非浏览器访问做了拦截（试试填请求头）'],
     3:['目录不在详情页，需要单独填「目录页链接」','章节规则只命中了标题栏'],
     4:['正文用了 @text 丢了换行，试试改成 @html','站点做了分页，正文分了好几页'],
     5:['分类页网址填错了，或者网站改版了','第一个分类的第一页正好没有书（换个分类排前面）','分类页的书结构和搜索页不一样，要单独点选'],
   }[step] || [];
+  if(isPost && (step === 1 || step === 2)){
+    tips = ['这个网站用 <b>POST 方式搜索</b>，网页版测试拿不到结果，<b>书源在 App 里通常是能用的</b>，建议直接导出后到 App 里搜一次书验证'].concat(tips);
+  }
   return `<div class="note err mt8"><span class="ico">⚠️</span><div>
     <b>${esc(e.message||'出错了')}</b>
-    ${tips.length?'<div class="mt8 tiny" style="color:#c9a6a6">可能的原因：</div><ul class="ol" style="color:#c9a6a6;font-size:12px">'+tips.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':''}
+    ${tips.length?'<div class="mt8 tiny" style="color:#c9a6a6">可能的原因：</div><ul class="ol" style="color:#c9a6a6;font-size:12px">'+tips.map(t=>'<li>'+t+'</li>').join('')+'</ul>':''}
   </div></div>`;
 }
 

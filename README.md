@@ -117,6 +117,14 @@
 ## 常见问题
 
 <details>
+<summary><b>搜不同的书，网址完全不变（如 /s.php）</b></summary>
+
+这是 <b>POST 搜索</b>：关键词不在网址里。向导第 2 步点「自动生成搜索地址」，工具会自动去网站首页分析搜索框并生成 POST 格式（Legado 写法 `s.php,{"method":"POST","body":"searchkey={{key}}"}`）。识别失败时展开「搜不同的书，网址完全不变？」手动填参数名（常见：`searchkey` / `keyword` / `keyboard`）。
+
+注意：POST 站点在网页版测试里「搜索书籍」一步可能拿不到结果（浏览器无法直接提交 POST），书源本身在 App 里通常能用，导出后到 App 验证即可。做搜索页点选时如果打开是空页，用「手动粘贴网页」把电脑浏览器里的结果页源码贴进来。
+</details>
+
+<details>
 <summary><b>测试时"搜索书籍"失败</b></summary>
 
 - 检查搜索地址里有没有 `{{key}}`
