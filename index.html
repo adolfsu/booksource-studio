@@ -248,6 +248,22 @@ nav.tabbar button.on .ic{filter:none;transform:translateY(-1px)}
 .x{width:26px;height:26px;border-radius:8px;border:0;background:transparent;color:var(--txt3);
   font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;padding:0}
 
+/* ---------- 分类选择 ---------- */
+.catlist{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.cat{
+  display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:9px;
+  background:var(--bg2);border:1px solid var(--line);font-size:12.5px;color:var(--txt2);
+  cursor:pointer;transition:.15s;user-select:none;line-height:1.2;
+}
+.cat.on{background:rgba(72,184,255,.14);border-color:rgba(72,184,255,.45);color:#bfe4ff}
+.cat .tick{font-size:10px;opacity:.55}
+.cat.on .tick{opacity:1}
+.catlist-acts{display:flex;align-items:center;gap:10px;margin-top:11px}
+.catlist-acts .sp{flex:1}
+.mini{font-size:11px;color:var(--txt3);background:none;border:0;cursor:pointer;padding:4px 0;
+  text-decoration:underline;text-underline-offset:2px;font-family:inherit}
+.mini:active{color:var(--txt2)}
+
 /* toast */
 #toast{
   position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 88px);transform:translate(-50%,12px);
@@ -441,7 +457,7 @@ function loadLib(){
     const raw = localStorage.getItem(LS_LIB);
     if(raw){
       const d = JSON.parse(raw);
-      if(Array.isArray(d.list) && d.list.length){ LIB = d.list; CUR = Math.min(d.cur||0, LIB.length-1); return; }
+      if(Array.isArray(d.list) && d.list.length){ LIB = d.list.map(normalizeSource); CUR = Math.min(d.cur||0, LIB.length-1); return; }
     }
   }catch(e){}
   LIB = [blankSource()]; CUR = 0;
@@ -462,8 +478,24 @@ function blankSource(){
     ruleSearch:{ bookList:'', name:'', author:'', bookUrl:'', coverUrl:'', intro:'', kind:'', lastChapter:'', wordCount:'', checkKeyWord:'' },
     ruleBookInfo:{ name:'', author:'', coverUrl:'', intro:'', kind:'', lastChapter:'', tocUrl:'', wordCount:'', canReName:'' },
     ruleToc:{ chapterList:'', chapterName:'', chapterUrl:'', nextTocUrl:'', updateTime:'', isVolume:'' },
-    ruleContent:{ content:'', nextContentUrl:'', webJs:'', sourceRegex:'', replaceRegex:'' }
+    ruleContent:{ content:'', nextContentUrl:'', webJs:'', sourceRegex:'', replaceRegex:'' },
+    ruleExplore:{ bookList:'', name:'', author:'', bookUrl:'', coverUrl:'', intro:'', kind:'', lastChapter:'', wordCount:'' }
   };
+}
+
+/* 老草稿/导入的书源补齐新增字段，避免 undefined 报错 */
+function normalizeSource(s){
+  if(!s || typeof s !== 'object') return blankSource();
+  const b = blankSource();
+  Object.keys(b).forEach(k=>{
+    if(s[k] === undefined) s[k] = b[k];
+  });
+  ['ruleSearch','ruleBookInfo','ruleToc','ruleContent','ruleExplore'].forEach(g=>{
+    if(!s[g] || typeof s[g] !== 'object') s[g] = b[g];
+    Object.keys(b[g]).forEach(k=>{ if(s[g][k] === undefined) s[g][k] = b[g][k]; });
+  });
+  if(typeof s._step !== 'number') s._step = 0;
+  return s;
 }
 
 function getS(dot){
@@ -527,6 +559,22 @@ const SCHEMA = {
       { k:'ruleContent.nextContentUrl', l:'正文下一页', ph:'', tip:'正文分页的站点才需要。' },
       { k:'ruleContent.replaceRegex', l:'净化正则', ph:'', tip:'去除广告、求订阅之类的干扰文字，可留空。' },
     ]
+  },
+  explore: {
+    label:'发现', icon:'🧭',
+    note:'「发现」是 App 里按分类翻书的地方，不用先知道书名。先把分类列出来，再指出分类页里的书怎么取。',
+    fields:[
+      { k:'exploreUrl', l:'分类列表', ph:'玄幻::/sort/1/\n都市::/sort/2/', req:1, area:1,
+        tip:'每行一个分类，格式 <b>分类名::网址</b>。网址里用 <code>{{page}}</code> 表示页码就能翻页。向导「发现」那步可以自动扫描生成。' },
+      { k:'ruleExplore.bookList', l:'书籍列表', ph:'class.book-list@tag.li', req:1,
+        tip:'在<b>分类页</b>框住一本书的整块区域。' },
+      { k:'ruleExplore.name', l:'书名', ph:'tag.h3@text', req:1 },
+      { k:'ruleExplore.bookUrl', l:'详情链接', ph:'tag.a@href', req:1 },
+      { k:'ruleExplore.author', l:'作者', ph:'class.author@text' },
+      { k:'ruleExplore.coverUrl', l:'封面', ph:'tag.img@src' },
+      { k:'ruleExplore.intro', l:'简介', ph:'class.intro@text' },
+      { k:'ruleExplore.kind', l:'分类', ph:'class.type@text' },
+    ]
   }
 };
 
@@ -543,13 +591,18 @@ function hasMod(m){
   const f = SCHEMA[m].fields.filter(x=>x.k.includes('bookList')||x.k.includes('chapterList')||x.k.endsWith('.content')||x.k==='ruleBookInfo.name');
   return f.every(x=> clean(getS(x.k)) !== '');
 }
-function doneCount(){
+/* 核心 4 项（不含可选的「发现」） */
+function coreCount(){
   let n = 0;
   if(clean(S.bookSourceUrl) && clean(S.searchUrl)) n++;
   if(hasMod('search')) n++;
   if(hasMod('toc')) n++;
   if(hasMod('content')) n++;
   return n;
+}
+/* 含「发现」在内的总完成项 */
+function doneCount(){
+  return coreCount() + (hasMod('explore') ? 1 : 0);
 }
 
 /* ============================================================
@@ -962,6 +1015,136 @@ function buildSearchUrl(pageUrl, keyword){
   return { url: result, ok: hit };
 }
 
+/* ============================================================
+   Part 5.5 · 发现 / 分类（exploreUrl）
+   ============================================================ */
+const GENRE_WORDS = /玄幻|奇幻|武侠|仙侠|修真|修仙|都市|历史|军事|科幻|灵异|惊悚|悬疑|推理|游戏|竞技|体育|女生|言情|穿越|重生|二次元|N次元|轻小说|完本|排行|推荐|新书|全本|其他/;
+const NAV_STOP = /^(首页|主页|书架|书库|我的|登录|注册|退出|搜索|客服|帮助|下载|客户端|电脑版|手机版|设置|充值|投稿|作者|版权|广告|关于|联系|返回|上一页|下一页|更多|全部|目录|免费|最新|历史记录)$/;
+
+/** 把 exploreUrl 文本拆成 [{name,url}] */
+function parseExplore(text){
+  return String(text||'').split(/\r?\n|&&/).map(s=>s.trim()).filter(Boolean).map(line=>{
+    const i = line.indexOf('::');
+    if(i < 0) return { name:'', url: line };
+    return { name: line.slice(0,i).trim(), url: line.slice(i+2).trim() };
+  }).filter(x=> x.name && x.url);
+}
+
+/** 反方向：从分类数组生成 exploreUrl 文本 */
+function buildExploreUrl(items){
+  return (items||[]).filter(x=> x.name && x.url)
+    .map(x=> x.name + '::' + x.url).join('\n');
+}
+
+/** 分类网址里的 {{page}} 换成真实页码（支持 page 参与简单运算） */
+function explorePageUrl(raw, page){
+  let u = String(raw||'').trim().replace(/^["']|["']$/g,'');
+  u = u.replace(/\{\{([^{}]+)\}\}/g, (m, expr)=>{
+    const e = expr.trim();
+    try{
+      if(/^[page\d\s+\-*/().%]+$/.test(e)) return String(Function('page','return ('+e+')')(page));
+    }catch(_){}
+    return m;
+  });
+  u = u.split('{page}').join(String(page));
+  if(!/^https?:/i.test(u)){
+    const base = ((S && S.bookSourceUrl) || '').replace(/\/+$/,'') + '/';
+    u = absUrl(u, base);
+  }
+  return u;
+}
+
+/** 猜出分类页的翻页写法，把页码替换成 {{page}}；猜不到返回空串 */
+function pageTemplatize(u){
+  if(!u || /\{\{page\}\}/.test(u)) return '';
+  let m = u.match(/([?&](?:page|p|pn|pageno|pageNo|pageNum)=\d+)/i);
+  if(m) return u.replace(/([?&](?:page|p|pn|pageno|pageNo|pageNum)=)\d+/i, '$1{{page}}');
+  m = u.match(/^(.*?\/(?:sort|list|category|type|fenlei)\/\d+[_-])(\d+)(\.html?)(\?.*)?$/i);
+  if(m) return m[1] + '{{page}}' + m[3] + (m[4] || '');
+  m = u.match(/^(.*?(?:index|list|page|sort|category)[_-]?)(\d+)(\.html?)(\?.*)?$/i);
+  if(m) return m[1] + '{{page}}' + m[3] + (m[4] || '');
+  return '';
+}
+
+/** 从一个页面里挑出像「分类」的链接 */
+function pickCategoriesFrom(doc, base){
+  const h0 = host(base);
+  const out = [], seenU = new Set(), seenN = new Set();
+  doc.querySelectorAll('a[href]').forEach(a=>{
+    const raw = a.getAttribute('href') || '';
+    if(!raw || /^(javascript:|#)/i.test(raw)) return;
+    const t = clean(a.textContent).replace(/[»>››\s]+$/,'').trim();
+    if(!t || t.length > 10) return;
+    if(NAV_STOP.test(t)) return;
+    if(/^\d+$/.test(t)) return;
+    const u = absUrl(raw, base);
+    if(!/^https?:/i.test(u)) return;
+    if(h0 && host(u) !== h0) return;
+    if(/\/(book|read|chapter|txt|novel)\/?\d/i.test(u)) return;
+    if(/\.(jpg|png|gif|zip|apk)$/i.test(u)) return;
+    const key = u.replace(/\/+$/,'').replace(/^https?:\/\//,'');
+    if(seenU.has(key) || seenN.has(t)) return;
+    let score = 0;
+    if(GENRE_WORDS.test(t)) score += 10;
+    if(/(sort|class|category|list|type|fenlei|quanben)/i.test(u)) score += 6;
+    if(t.length <= 4) score += 2;
+    if(score <= 0) return;
+    seenU.add(key); seenN.add(t);
+    out.push({ name:t, url:u, score });
+  });
+  out.sort((a,b)=> b.score - a.score);
+  return out.slice(0, 30);
+}
+
+/** 自动扫描：首页分类 + 能找到的「分类」总览页 */
+async function scanCategories(){
+  const home = clean(S.bookSourceUrl);
+  if(!home) throw new Error('先把网站首页填上');
+  const pack = await grabDoc(home);
+  let list = pickCategoriesFrom(pack.doc, home);
+
+  if(list.length < 8){
+    try{
+      const h0 = host(home);
+      let catPage = '';
+      pack.doc.querySelectorAll('a[href]').forEach(a=>{
+        if(catPage) return;
+        const t = clean(a.textContent);
+        if(!/^(全部分类|作品分类|分类|分类导航|分类列表)$/.test(t)) return;
+        const u = absUrl(a.getAttribute('href') || '', home);
+        if(/^https?:/i.test(u) && host(u) === h0) catPage = u;
+      });
+      if(catPage){
+        const p2 = await grabDoc(catPage);
+        const seen = new Set(list.map(x=> x.name));
+        pickCategoriesFrom(p2.doc, catPage).forEach(x=>{
+          if(!seen.has(x.name)){ seen.add(x.name); x.url = pageTemplatize(x.url) || x.url; list.push(x); }
+        });
+      }
+    }catch(e){ /* 分类总览页打不开也没关系，首页结果够用 */ }
+  }
+  return list.slice(0, 40);
+}
+
+/** 当前已配置的分类（优先用缓存的数组，其次解析 exploreUrl） */
+function exploreItems(){
+  if(Array.isArray(S._cats)) return S._cats;
+  return parseExplore(S.exploreUrl);
+}
+function setExploreItems(items){
+  S._cats = items;
+  setS('exploreUrl', buildExploreUrl(items));
+  saveLib();
+}
+/** 扫描列表的勾选状态 → 合并进分类清单（手动加的不丢） */
+function syncScannedCats(){
+  const arr = Array.isArray(S._scanCats) ? S._scanCats : [];
+  const urls = new Set(arr.map(c=> c.url)), names = new Set(arr.map(c=> c.name));
+  const manual = exploreItems().filter(x=> !urls.has(x.url) && !names.has(x.name));
+  const picked = arr.filter(c=> c.on).map(c=> ({ name:c.name, url:c.url }));
+  setExploreItems(picked.concat(manual));
+}
+
 /** 抓首页，自动猜搜索接口 */
 async function sniffSearch(baseUrl){
   const pack = await grabDoc(baseUrl);
@@ -1240,7 +1423,7 @@ function targetCards(list){
 /* ============================================================
    Part 8 · 向导
    ============================================================ */
-const WSTEPS = ['网站','搜书','搜索页','详情','目录','正文','完成'];
+const WSTEPS = ['网站','搜书','搜索页','详情','目录','正文','发现','完成'];
 
 const TGT = {
   search: [
@@ -1261,6 +1444,12 @@ const TGT = {
   ],
   content: [
     { k:'ruleContent.content', l:'正文', kind:'html', hint:'点正文文字那一大块区域' },
+  ],
+  explore: [
+    { k:'ruleExplore.bookList', l:'书籍列表', kind:'list', hint:'点一下「分类页里一本书的整块区域」——工具会自动认出这一页所有书' },
+    { k:'ruleExplore.name', l:'书名', kind:'text', listKey:'ruleExplore.bookList', hint:'点书名那几个字', linkTo:'ruleExplore.bookUrl' },
+    { k:'ruleExplore.author', l:'作者', kind:'text', listKey:'ruleExplore.bookList', opt:1, hint:'点作者名（没有可跳过）' },
+    { k:'ruleExplore.coverUrl', l:'封面', kind:'img', listKey:'ruleExplore.bookList', opt:1, hint:'点书的封面图片（没有可跳过）' },
   ]
 };
 
@@ -1274,7 +1463,7 @@ function realSearchUrl(keyword){
 }
 
 function renderWizard(){
-  const step = Math.max(0, Math.min(S._step||0, 6));
+  const step = Math.max(0, Math.min(S._step||0, 7));
   const bar = '<div class="wsteps">' + WSTEPS.map((s,i)=>{
     const cls = i < step ? 'done' : (i === step ? 'cur' : '');
     return `<div class="wstep ${cls}"><div class="c">${i<step?'✓':i+1}</div><div class="lb">${s}</div></div>`;
@@ -1287,10 +1476,11 @@ function renderWizard(){
   else if(step === 3) body = wiz3();
   else if(step === 4) body = wiz4();
   else if(step === 5) body = wiz5();
-  else body = wiz6();
+  else if(step === 6) body = wiz6();
+  else body = wiz7();
 
   const prev = step > 0 ? `<button class="btn gho" data-wz="prev">← 上一步</button>` : '';
-  const next = step < 6 ? `<button class="btn pri" data-wz="next" style="flex:1">下一步 →</button>` : '';
+  const next = step < 7 ? `<button class="btn pri" data-wz="next" style="flex:1">下一步 →</button>` : '';
   const nav = `<div class="btn-row mt16" style="margin-top:18px">${prev}${next}</div>`;
 
   $('#pageWizard').innerHTML = bar + body + nav;
@@ -1305,6 +1495,32 @@ function bindWizardExtras(){
   }
   const tp = $('#btnTestProxy');
   if(tp) tp.onclick = testProxies;
+
+  // 分类标签：点一下选中/取消
+  $$('#pageWizard .cat[data-cat]').forEach(el=>{
+    el.onclick = ()=>{
+      const i = +el.dataset.cat;
+      const arr = S._scanCats || [];
+      if(!arr[i]) return;
+      arr[i].on = !arr[i].on;
+      syncScannedCats();
+      renderWizard();
+    };
+  });
+  // 分类标签上的 ✕：从清单里删掉
+  $$('#pageWizard [data-dcat]').forEach(b=>{
+    b.onclick = e=>{
+      e.stopPropagation();
+      const i = +b.dataset.dcat;
+      const items = exploreItems().slice();
+      const gone = items.splice(i,1)[0];
+      setExploreItems(items);
+      if(Array.isArray(S._scanCats) && gone){
+        S._scanCats.forEach(c=>{ if(c.url === gone.url || c.name === gone.name) c.on = false; });
+      }
+      renderWizard();
+    };
+  });
 }
 
 /* ---- 第 0 步 ---- */
@@ -1431,8 +1647,74 @@ function wiz5(){
   <div class="note mt12"><span class="ico">📄</span><div>正文区域通常是页面中间很大一块文字，会避开标题和广告。</div></div>`;
 }
 
-/* ---- 第 6 步 ---- */
+/* ---- 第 6 步：发现 / 分类 ---- */
 function wiz6(){
+  const items = exploreItems();
+  const sc = Array.isArray(S._scanCats) ? S._scanCats : null;
+  const sel = sc ? sc.filter(c=>c.on).length : 0;
+  const hasList = clean(S.ruleExplore.bookList) !== '';
+
+  const chips = items.length
+    ? `<div class="catlist">${items.map((c,i)=>
+        `<span class="cat on">${esc(c.name)}<button class="mini" data-dcat="${i}" style="padding:0 0 0 2px;text-decoration:none;color:inherit">✕</button></span>`
+      ).join('')}</div>`
+    : `<div class="picked miss"><div class="pk">分类</div><div class="pv">还没有分类</div></div>`;
+
+  return `
+  <div class="wiz-t">再给它一个「发现」页，能按分类逛</div>
+  <div class="wiz-d">做完这步，阅读 App 底部的「发现」里就能按 <b>玄幻 / 都市 / 历史</b> 翻书，不用先知道书名。<b>跳过也完全不影响搜书</b>。</div>
+
+  <div class="card">
+    <div class="row" style="border:0;padding:0 0 4px">
+      <div><div class="rl">① 网站有哪些分类</div><div class="rd">去首页自动找分类入口</div></div>
+      <button class="btn sm pri" data-wz="scanCat">${sc ? '重新扫描' : '自动扫描'}</button>
+    </div>
+    ${ sc && sc.length ? `
+      <div class="catlist">${sc.map((c,i)=>
+        `<div class="cat ${c.on?'on':''}" data-cat="${i}"><span class="tick">${c.on?'✓':'+'}</span>${esc(c.name)}</div>`
+      ).join('')}</div>
+      <div class="catlist-acts">
+        <button class="mini" data-wz="catAll">全选</button>
+        <button class="mini" data-wz="catNone">全不选</button>
+        <div class="sp"></div>
+        <span class="tiny">已选 ${sel} 个</span>
+      </div>
+      <div class="f-tip">这些是扫出来的分类，<b>点亮的才写进书源</b>。选 5~10 个最常用的就够。</div>`
+      : sc ? `<div class="note warn mt8"><span class="ico">⚠️</span><div>没自动认出分类，用下面的「手动加一个分类」就行。</div></div>`
+      : `<div class="f-tip">扫出来的分类会以标签形式列出，点一下就能选中/取消。</div>` }
+  </div>
+
+  <div class="card">
+    <div class="f">
+      <div class="f-h"><div class="f-l">② 当前分类清单</div><div class="sp"></div>${items.length?`<span class="badge g">${items.length} 个</span>`:''}</div>
+      ${chips}
+      <div class="f-tip">点分类右边的 ✕ 可以删掉。</div>
+    </div>
+    <details>
+      <summary>手动加一个分类</summary>
+      <div class="f mt10"><div class="f-h"><div class="f-l">分类名</div></div>
+        <input type="text" id="catName" placeholder="例：玄幻小说"></div>
+      <div class="f"><div class="f-h"><div class="f-l">分类页网址</div></div>
+        <input type="text" id="catUrl" class="mono" placeholder="https://www.xxx.com/sort/1/"></div>
+      <button class="btn sm wide" data-wz="addCat">添加到清单</button>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="row" style="border:0;padding:0 0 8px">
+      <div><div class="rl">③ 分类页里的书怎么取</div><div class="rd">点开一个分类页，照着点书名/封面</div></div>
+    </div>
+    ${targetCards(TGT.explore)}
+    <button class="btn pri wide mt12" data-wz="pickExplore" ${items.length?'':'disabled'}>打开分类页，开始点 →</button>
+    ${items.length?'':'<div class="f-tip">先在上面选好至少一个分类，这个按钮才能点。</div>'}
+    ${hasList?'<div class="note ok mt8"><span class="ico">✓</span><div>分类页的取书规则已经配好。</div></div>':''}
+  </div>
+
+  <div class="note mt12"><span class="ico">🧭</span><div>点选方式跟前面一样：<b>先点一本书的整块</b>，再点书名、作者。<b>点错了重点一次就行。</b></div></div>`;
+}
+
+/* ---- 第 7 步：完成 ---- */
+function wiz7(){
   const miss = [];
   if(!clean(S.bookSourceUrl)) miss.push('网站首页');
   if(!clean(S.searchUrl)) miss.push('搜索地址');
@@ -1440,6 +1722,8 @@ function wiz6(){
   if(!clean(S.ruleToc.chapterList)) miss.push('目录点选');
   if(!clean(S.ruleContent.content)) miss.push('正文点选');
 
+  const cats = exploreItems();
+  const expOk = cats.length > 0 && clean(S.ruleExplore.bookList) !== '';
   const ok = miss.length === 0;
   return `
   <div class="wiz-t">${ok ? '书源做好了 🎉' : '快好了，还差一点'}</div>
@@ -1453,12 +1737,13 @@ function wiz6(){
     <div class="kv"><div class="k">列表</div><div class="v">${esc(S.ruleSearch.bookList||'（未填）')}</div></div>
     <div class="kv"><div class="k">章节</div><div class="v">${esc(S.ruleToc.chapterList||'（未填）')}</div></div>
     <div class="kv"><div class="k">正文</div><div class="v">${esc(S.ruleContent.content||'（未填）')}</div></div>
+    <div class="kv"><div class="k">发现</div><div class="v ${expOk?'':'miss'}">${expOk ? esc(cats.length + ' 个分类 · ' + (clean(S.ruleExplore.bookList))) : '没配（App 里就没有「发现」页）'}</div></div>
   </div>
   <div class="btn-row mt12">
     <button class="btn ok" style="flex:1" data-wz="goTest">跑一遍测试</button>
     <button class="btn pri" style="flex:1" data-wz="goExport">导出书源</button>
   </div>
-  <div class="note mt12"><span class="ico">🧪</span><div>测试会真的联网去搜书、点章节、抓正文，大概 10 秒。</div></div>`;
+  <div class="note mt12"><span class="ico">🧪</span><div>测试会真的联网去搜书、点章节、抓正文、翻分类，大概 15 秒。</div></div>`;
 }
 
 /* ============================================================
@@ -1526,8 +1811,28 @@ async function doContent(chUrl){
   return text;
 }
 
-/* 取"第一本可用的书"的链接，供向导打开详情页用 */
-async function firstBookUrl(){
+/* ---- 发现 / 分类：抓第一个分类的第一页 ---- */
+async function doExplore(page){
+  const items = exploreItems();
+  if(!items.length) throw new Error('还没配置分类（分类清单是空的）');
+  if(!clean(S.ruleExplore.bookList)) throw new Error('还没点选「分类页书籍列表」');
+  page = page || 1;
+  const item = items[0];
+  const url = explorePageUrl(item.url, page);
+  const pack = await grabDoc(url);
+  const root = pack.doc.documentElement;
+  const list = resolveRule(S.ruleExplore.bookList, [root], url).els;
+  if(!list.length) throw new Error('分类页没解析出书（「' + (item.name || '第一个分类') + '」这一页）');
+  const books = list.slice(0, 24).map(el=>({
+    name:   ruleVal(S.ruleExplore.name, el, url),
+    author: ruleVal(S.ruleExplore.author, el, url),
+    url:    ruleVal(S.ruleExplore.bookUrl, el, url),
+    cover:  ruleVal(S.ruleExplore.coverUrl, el, url),
+  })).filter(b=> b.name || b.url);
+  return { item, page, url, total: list.length, books };
+}
+
+/* 取"第一本可用的书"的链接，供向导打开详情页用 */async function firstBookUrl(){
   if(clean(S._detailUrl)) return S._detailUrl;
   const books = await doSearch(S._kw || '小说');
   const b = books.find(x=> x.url);
@@ -1552,9 +1857,11 @@ function saveLibSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveLib,
 
 function updateHeader(){
   $('#hName').textContent = clean(S.bookSourceName) || '新书源';
-  const n = doneCount();
-  $('#hSub').textContent = n >= 4 ? '4 项规则齐了，可以导出' : `已完成 ${n} / 4 项`;
-  $('#hDot').classList.toggle('on', n >= 4);
+  const c = coreCount(), n = doneCount();
+  $('#hSub').textContent = c >= 4
+    ? (n >= 5 ? '5 项规则齐全（含分类发现）' : '核心 4 项齐了 · 发现未配置')
+    : `已完成 ${c} / 4 项核心规则`;
+  $('#hDot').classList.toggle('on', c >= 4);
 }
 
 function goTab(name){
@@ -1585,6 +1892,55 @@ async function handleWz(a){
   if(a === 'next') return wzNext();
   if(a === 'goTest'){ goTab('test'); setTimeout(()=>runAll(), 120); return; }
   if(a === 'goExport'){ goTab('export'); return; }
+
+  /* ---- 发现 / 分类 ---- */
+  if(a === 'scanCat'){
+    if(!clean(S.bookSourceUrl)) return toast('先把网站首页填上');
+    showBusy('正在扫描网站的分类入口…');
+    try{
+      const list = await scanCategories();
+      hideBusy();
+      const prev = exploreItems();
+      S._scanCats = list.map(c=>{
+        const hit = prev.find(p=> p.name === c.name || p.url === c.url);
+        return { name:c.name, url: pageTemplatize(c.url) || c.url, on: !!hit };
+      });
+      if(!prev.length) S._scanCats.forEach((c,i)=>{ c.on = i < 12; });
+      syncScannedCats();
+      renderWizard();
+      toast(list.length ? '扫到 ' + list.length + ' 个分类' : '没自动认出分类，试试手动添加');
+    }catch(e){ hideBusy(); toast('扫描失败：' + e.message); }
+    return;
+  }
+  if(a === 'catAll' || a === 'catNone'){
+    (S._scanCats || []).forEach(c=>{ c.on = (a === 'catAll'); });
+    syncScannedCats(); renderWizard();
+    return;
+  }
+  if(a === 'addCat'){
+    const nm = clean($('#catName') && $('#catName').value);
+    let u = clean($('#catUrl') && $('#catUrl').value);
+    if(!nm || !u) return toast('分类名和网址都要填');
+    if(!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    const tpl = pageTemplatize(u);
+    if(tpl) u = tpl;
+    const base = (clean(S.bookSourceUrl) || '').replace(/\/+$/, '');
+    if(base && u.startsWith(base + '/')) u = u.slice(base.length);
+    const items = exploreItems().slice();
+    if(items.some(x=> x.url === u)) return toast('这个分类已经加过了');
+    items.push({ name:nm, url:u });
+    setExploreItems(items); renderWizard();
+    toast(tpl ? '已添加，并自动支持翻页' : '已添加');
+    return;
+  }
+  if(a === 'pickExplore'){
+    const items = exploreItems();
+    if(!items.length) return toast('先选至少一个分类');
+    let u = clean(S._explorePickUrl);
+    if(!u) u = explorePageUrl(items[0].url, 1);
+    openPicker(u, TGT.explore, ()=>{ saveLib(); renderWizard(); }, '分类页 · 点选（' + (items[0].name || '第一个分类') + '）');
+    return;
+  }
 
   if(a === 'genSearch'){
     const purl = clean($('#wzPage') && $('#wzPage').value);
@@ -1668,7 +2024,7 @@ function wzNext(){
   if(step === 1){
     if(!clean(S.searchUrl)) return toast('先点「自动生成搜索地址」，或者手动填一个');
   }
-  S._step = Math.min(6, step + 1);
+  S._step = Math.min(7, step + 1);
   saveLib(); renderWizard(); updateHeader(); window.scrollTo(0,0);
 }
 
@@ -1694,7 +2050,9 @@ function renderRules(){
       return `<div class="f">
         <div class="f-h"><div class="f-l">${esc(f.l)}</div>${f.req?'<span class="badge r">必填</span>':''}<div class="sp"></div>
         ${clean(v)?'<span class="badge g">已填</span>':''}</div>
-        <input type="text" class="mono" data-k="${f.k}" value="${esc(v||'')}" placeholder="${esc(f.ph||'')}">
+        ${f.area
+          ? `<textarea class="mono" rows="3" data-k="${f.k}" placeholder="${esc(f.ph||'')}">${esc(v||'')}</textarea>`
+          : `<input type="text" class="mono" data-k="${f.k}" value="${esc(v||'')}" placeholder="${esc(f.ph||'')}">`}
         ${f.tip?`<div class="f-tip">${f.tip}</div>`:''}
       </div>`;
     }).join('')}
@@ -1734,7 +2092,7 @@ function renderRules(){
 
   $$('#modSeg button').forEach(b=> b.onclick = ()=>{ RULE_MOD = b.dataset.mod; renderRules(); });
   $$('[data-act="pick"]').forEach(b=> b.onclick = ()=>{
-    const map = { search:'pickSearch', info:'pickInfo', toc:'pickToc', content:'pickContent' };
+    const map = { search:'pickSearch', info:'pickInfo', toc:'pickToc', content:'pickContent', explore:'pickExplore' };
     handleWz(map[b.dataset.mod]);
   });
 }
@@ -1746,7 +2104,8 @@ function tcard(n, title, st, body){
   const cls = st === 'ok' ? 'done' : st === 'err' ? 'err' : st === 'run' ? 'run' : '';
   const tag = st === 'ok' ? '<span class="badge g">通过</span>'
             : st === 'err' ? '<span class="badge" style="color:var(--err);border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.12)">没通过</span>'
-            : st === 'run' ? '<span class="badge y">进行中</span>' : '';
+            : st === 'run' ? '<span class="badge y">进行中</span>'
+            : st === 'skip' ? '<span class="badge">未配置</span>' : '';
   return `<div class="tstep">
     <div class="tstep-h"><div class="tnum ${cls}">${st==='ok'?'✓':st==='err'?'!':n}</div>
       <div class="tt">${esc(title)}</div>${tag}</div>
@@ -1769,7 +2128,7 @@ function booksHtml(books){
 function renderTest(){
   $('#pageTest').innerHTML = `
   <div class="wiz-t">跑一遍，看能不能用</div>
-  <div class="wiz-d">工具会真的去这个网站搜一次书、打开目录、再抓一章正文。<b>约 10 秒</b>，全部通过就说明书源可用。</div>
+  <div class="wiz-d">工具会真的去这个网站搜一次书、打开目录、抓一章正文；配了分类的话，还会翻一遍分类页。<b>约 15 秒</b>，全部通过就说明书源可用。</div>
   <div class="card">
     <div class="searchbar">
       <input id="testKw" placeholder="搜什么书？例：斗破苍穹" value="${esc(S._kw||'')}">
@@ -1787,6 +2146,7 @@ function errBox(e, step){
     2:['详情链接规则取到的是空值','网站对非浏览器访问做了拦截（试试填请求头）'],
     3:['目录不在详情页，需要单独填「目录页链接」','章节规则只命中了标题栏'],
     4:['正文用了 @text 丢了换行，试试改成 @html','站点做了分页，正文分了好几页'],
+    5:['分类页网址填错了，或者网站改版了','第一个分类的第一页正好没有书（换个分类排前面）','分类页的书结构和搜索页不一样，要单独点选'],
   }[step] || [];
   return `<div class="note err mt8"><span class="ico">⚠️</span><div>
     <b>${esc(e.message||'出错了')}</b>
@@ -1837,6 +2197,7 @@ async function runAll(){
   try{
     content = await doContent(chapters[0].url);
     const okLen = clean(content).length > 100;
+    const ex = await exploreCardHtml();
     out.innerHTML = tcard(1,'搜索书籍','ok',`<div class="tiny">${books.length} 本</div>`)
       + tcard(2,'打开详情页','ok',`<div class="tiny">${esc(info.name||b.name)}</div>`)
       + tcard(3,'抓目录','ok',`<div class="tiny">共 ${chapters.length} 章</div>`)
@@ -1845,6 +2206,7 @@ async function runAll(){
            <div class="kv"><div class="k">字数</div><div class="v">${clean(content).length} 字</div></div>
            <div class="mono-box sm mt8">${esc(trunc(content, 320))}</div>
            ${okLen?'':'<div class="note warn mt8"><span class="ico">⚠️</span><div>抓到的内容太短，正文规则可能没点准</div></div>'}`)
+      + ex
       + `<div class="note ok mt12"><span class="ico">🎉</span><div><b>全链路通过</b>，可以导出了。</div></div>
          <div class="btn-row mt12"><button class="btn pri wide" onclick="goTab('export')">去导出书源</button></div>`;
   }catch(e){
@@ -1852,6 +2214,25 @@ async function runAll(){
       + tcard(2,'打开详情页','ok',`<div class="tiny">${esc(info.name||b.name)}</div>`)
       + tcard(3,'抓目录','ok',`<div class="tiny">共 ${chapters.length} 章</div>`)
       + tcard(4,'抓正文','err', errBox(e,4));
+  }
+}
+
+/** 测试第 5 项：分类浏览（没配就显示“未配置”，不算失败） */
+async function exploreCardHtml(){
+  const items = exploreItems();
+  if(!items.length || !clean(S.ruleExplore.bookList)){
+    return tcard(5,'分类浏览','skip',
+      `<div class="tiny">没配置「发现」。App 里就只能靠搜书名，没有分类页可逛。想加的话回向导「发现」那一步。</div>`);
+  }
+  try{
+    const r = await doExplore(1);
+    const names = items.map(x=> x.name).filter(Boolean);
+    return tcard(5,'分类浏览','ok',
+      `<div class="kv"><div class="k">分类</div><div class="v">${esc(names.slice(0,8).join(' / '))}${names.length>8?' 等 '+names.length+' 个':''}</div></div>
+       <div class="kv"><div class="k">测试页</div><div class="v">${esc(r.item.name||'第一个分类')} · 第 1 页 · 共 ${r.total} 本</div></div>
+       ${booksHtml(r.books)}`);
+  }catch(e){
+    return tcard(5,'分类浏览','err', errBox(e,5));
   }
 }
 
@@ -1884,7 +2265,8 @@ function toLegado(s){
     ruleSearch: r(s.ruleSearch, ['author','bookList','bookUrl','checkKeyWord','coverUrl','intro','kind','lastChapter','name','wordCount']),
     ruleBookInfo: r(s.ruleBookInfo, ['author','canReName','coverUrl','intro','kind','lastChapter','name','tocUrl','wordCount']),
     ruleToc: r(s.ruleToc, ['chapterList','chapterName','chapterUrl','isVolume','nextTocUrl','updateTime']),
-    ruleContent: r(s.ruleContent, ['content','nextContentUrl','replaceRegex','sourceRegex','webJs'])
+    ruleContent: r(s.ruleContent, ['content','nextContentUrl','replaceRegex','sourceRegex','webJs']),
+    ruleExplore: r(s.ruleExplore, ['author','bookList','bookUrl','coverUrl','intro','kind','lastChapter','name','wordCount'])
   };
 }
 
@@ -1924,12 +2306,17 @@ function renderExport(){
   if(!clean(S.ruleSearch.bookList)) miss.push('书籍列表');
   if(!clean(S.ruleToc.chapterList)) miss.push('章节列表');
   if(!clean(S.ruleContent.content)) miss.push('正文');
+  const cats = exploreItems();
+  const expOk = cats.length > 0 && clean(S.ruleExplore.bookList) !== '';
 
   $('#pageExport').innerHTML = `
   <div class="wiz-t">导出书源</div>
   <div class="wiz-d">点「复制」或「下载」，然后按下面的步骤导入到阅读 App 里。</div>
   ${miss.length?`<div class="note warn"><span class="ico">⚠️</span><div>还差 <b>${miss.join('、')}</b> 没填，导入后可能用不了。建议先回向导补完。</div></div>`:
     `<div class="note ok"><span class="ico">✅</span><div>规则齐全，可以导出了。</div></div>`}
+  ${expOk
+    ? `<div class="note ok"><span class="ico">🧭</span><div>已配 <b>${cats.length}</b> 个分类（${esc(cats.slice(0,5).map(c=>c.name||'未命名').join('、'))}${cats.length>5?'…':''}），App 的「发现」页可以直接用。</div></div>`
+    : `<div class="note"><span class="ico">🧭</span><div>没配「发现」分类，导入后 App 里只能用搜索，没有分类页可逛。想加的话回向导「发现」那一步。</div></div>`}
 
   <div class="btn-row mt12">
     <button class="btn pri" style="flex:1" id="btnCopy">复制书源</button>
@@ -1989,8 +2376,9 @@ function doImport(text){
       ruleBookInfo: Object.assign(blankSource().ruleBookInfo, o.ruleBookInfo||{}),
       ruleToc: Object.assign(blankSource().ruleToc, o.ruleToc||{}),
       ruleContent: Object.assign(blankSource().ruleContent, o.ruleContent||{}),
+      ruleExplore: Object.assign(blankSource().ruleExplore, o.ruleExplore||{}),
     });
-    s._step = 6;
+    s._step = 7;
     LIB.push(s); n++;
   });
   if(!n) return toast('没识别出书源（缺少 bookSourceUrl）');
@@ -2078,6 +2466,7 @@ function bindGlobal(){
     const k = e.target.dataset && e.target.dataset.k;
     if(!k) return;
     setS(k, e.target.value);
+    if(k === 'exploreUrl') S._cats = null;   // 手改过就以文本为准
     if(k === 'bookSourceName') updateHeader();
     saveLibSoon();
   });
