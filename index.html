@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>书源工坊 · 零基础做书源</title>
+<style>
+:root{
+  --bg:#0e1116; --bg2:#151a22; --card:#1a2029; --card2:#212836;
+  --line:#2a3240; --line2:#374151;
+  --txt:#e6edf7; --txt2:#9aa7ba; --txt3:#66748a;
+  --acc:#48b8ff; --acc2:#2b8fd6; --ok:#3ddc84; --warn:#ffb648; --err:#ff6b6b;
+  --purple:#b08cff; --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow-x:hidden}
+body{
+  background:var(--bg); color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  font-size:15px; line-height:1.5; overscroll-behavior-y:none;
+  -webkit-font-smoothing:antialiased;
+}
+input,textarea,select,button{font-family:inherit;font-size:15px;color:inherit}
+::-webkit-scrollbar{width:0;height:0}
+.hide{display:none!important}
+
+/* ---------- 顶栏 ---------- */
+header{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:8px;
+  padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+  background:rgba(14,17,22,.94); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.hbtn{
+  flex:none;width:36px;height:36px;border-radius:11px;border:1px solid var(--line);
+  background:var(--card);display:flex;align-items:center;justify-content:center;
+  font-size:16px;cursor:pointer;transition:.15s;padding:0;
+}
+.hbtn:active{transform:scale(.93);background:var(--card2)}
+.htitle{flex:1;min-width:0}
+.htitle .nm{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htitle .sub{font-size:10.5px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--txt3);margin-right:5px;vertical-align:1px}
+.dot.on{background:var(--ok);box-shadow:0 0 6px rgba(61,220,132,.6)}
+
+/* ---------- 主体 ---------- */
+main{padding:12px 12px calc(env(safe-area-inset-bottom) + 78px)}
+.page{display:none;animation:fade .18s ease}
+.page.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.sec{margin-bottom:16px}
+.sec-h{display:flex;align-items:center;gap:8px;margin:0 2px 9px;font-size:12px;color:var(--txt3)}
+.sec-h b{color:var(--txt2);font-weight:600;font-size:12.5px}
+.sec-h .ln{flex:1;height:1px;background:var(--line)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px}
+.card+.card{margin-top:10px}
+
+/* 字段 */
+.f{margin-bottom:15px}
+.f:last-child{margin-bottom:0}
+.f-h{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.f-l{font-size:12.5px;color:var(--txt2);font-weight:500}
+.badge{font-size:9.5px;padding:1px 6px;border-radius:5px;background:var(--card2);color:var(--txt3);border:1px solid var(--line);white-space:nowrap}
+.badge.p{background:rgba(176,140,255,.14);color:var(--purple);border-color:rgba(176,140,255,.28)}
+.badge.r{background:rgba(72,184,255,.13);color:var(--acc);border-color:rgba(72,184,255,.28)}
+.badge.g{background:rgba(61,220,132,.12);color:var(--ok);border-color:rgba(61,220,132,.26)}
+.badge.y{background:rgba(255,182,72,.12);color:var(--warn);border-color:rgba(255,182,72,.28)}
+.f-h .sp{flex:1}
+
+input[type=text],input[type=url],input[type=number],textarea,select{
+  width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;color:var(--txt);outline:none;transition:.15s;font-size:15px;
+  -webkit-appearance:none;
+}
+input::placeholder,textarea::placeholder{color:#4d5a6d}
+input:focus,textarea:focus,select:focus{border-color:var(--acc2);background:#11161e;box-shadow:0 0 0 3px rgba(72,184,255,.1)}
+textarea{resize:vertical;min-height:60px;line-height:1.5}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+.f-tip{font-size:11.5px;color:var(--txt3);margin-top:5px;line-height:1.5}
+.f-tip b{color:var(--txt2);font-weight:500}
+
+/* 开关行 */
+.row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .rl{flex:1;font-size:13.5px}
+.row .rd{font-size:11px;color:var(--txt3)}
+.sw{width:44px;height:26px;border-radius:13px;background:var(--line2);position:relative;flex:none;transition:.2s;cursor:pointer;border:0;padding:0}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#8a97a8;transition:.2s}
+.sw.on{background:rgba(72,184,255,.35)}
+.sw.on::after{left:21px;background:var(--acc);box-shadow:0 0 8px rgba(72,184,255,.7)}
+
+/* 分段控件 */
+.seg{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:14px}
+.seg button{
+  flex:1;border:0;background:transparent;color:var(--txt2);padding:8px 4px;border-radius:9px;
+  font-size:13px;font-weight:500;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.seg button.on{background:var(--card2);color:var(--txt);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+/* 按钮 */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px 16px;border-radius:11px;border:1px solid var(--line);
+  background:var(--card);color:var(--txt);font-size:14px;font-weight:500;
+  cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:linear-gradient(180deg,#3fa9ec,#2b8fd6);border-color:#2b8fd6;color:#fff;font-weight:600}
+.btn.ok{background:rgba(61,220,132,.14);border-color:rgba(61,220,132,.4);color:var(--ok)}
+.btn.warn{background:rgba(255,182,72,.12);border-color:rgba(255,182,72,.35);color:var(--warn)}
+.btn.gho{background:transparent}
+.btn.wide{width:100%;padding:13px}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:9px}
+.btn:disabled{opacity:.35;pointer-events:none}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* 向导 */
+.wsteps{display:flex;align-items:center;gap:1px;margin:2px 0 16px;padding:0 2px;overflow:hidden}
+.wstep{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;min-width:0}
+.wstep .c{
+  width:21px;height:21px;border-radius:50%;background:var(--card);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--txt3);
+  font-weight:600;transition:.2s;z-index:2;flex:none;
+}
+.wstep .lb{font-size:9px;color:var(--txt3);white-space:nowrap;transform:scale(.9)}
+.wstep.done .c{background:rgba(61,220,132,.15);border-color:rgba(61,220,132,.45);color:var(--ok)}
+.wstep.cur .c{background:var(--acc2);border-color:var(--acc);color:#fff;box-shadow:0 0 0 3px rgba(72,184,255,.16)}
+.wstep.cur .lb{color:var(--acc)}
+.wstep::before{content:'';position:absolute;top:10px;left:-50%;width:100%;height:1px;background:var(--line);z-index:1}
+.wstep:first-child::before{display:none}
+.wstep.done::before,.wstep.cur::before{background:rgba(61,220,132,.4)}
+
+.wiz-t{font-size:17px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+.wiz-d{font-size:13px;color:var(--txt2);line-height:1.65;margin:0 0 14px}
+.wiz-d b{color:var(--txt);font-weight:600}
+.wiz-d em{color:var(--acc);font-style:normal;font-weight:600}
+
+.ol{padding-left:18px;margin:8px 0 0;font-size:13px;color:var(--txt2);line-height:1.8}
+.ol li{margin-bottom:4px}
+.ol li b{color:var(--txt)}
+
+.pill{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
+  background:rgba(72,184,255,.1);border:1px solid rgba(72,184,255,.22);color:#8fcdf5;font-size:11px;
+}
+
+/* 已选规则回显 */
+.picked{
+  display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--bg2);
+  border:1px solid var(--line);border-radius:10px;margin-top:8px;font-size:12.5px;
+}
+.picked .pk{flex:none;width:60px;color:var(--txt3);font-size:11px}
+.picked .pv{flex:1;min-width:0;font-family:ui-monospace,monospace;font-size:11.5px;
+  color:var(--acc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picked.miss .pv{color:var(--err);font-family:inherit;font-style:italic}
+
+/* 测试区 */
+.tstep{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:10px}
+.tstep-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.tnum{width:21px;height:21px;border-radius:7px;background:var(--card2);color:var(--txt2);font-size:11px;
+  display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.tnum.done{background:rgba(61,220,132,.16);color:var(--ok)}
+.tnum.err{background:rgba(255,107,107,.16);color:var(--err)}
+.tnum.run{background:rgba(72,184,255,.16);color:var(--acc)}
+.tstep-h .tt{font-size:13.5px;font-weight:600;flex:1}
+.searchbar{display:flex;gap:8px}
+.searchbar input{flex:1}
+
+.res-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.book{
+  display:flex;gap:10px;padding:9px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:11px;cursor:pointer;transition:.15s;
+}
+.book:active{background:var(--card2)}
+.book img{width:44px;height:60px;border-radius:7px;object-fit:cover;background:var(--card2);flex:none}
+.book .bi{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.book .bn{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.book .ba{font-size:11.5px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.book .bm{font-size:10.5px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.book .go{display:flex;align-items:center;color:var(--txt3);font-size:15px}
+
+.chap{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--bg2);
+  border:1px solid var(--line);border-radius:10px;margin-top:7px;font-size:13px;cursor:pointer}
+.chap:active{background:var(--card2)}
+.chap .cn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.kv{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kv:last-child{border-bottom:0}
+.kv .k{color:var(--txt3);flex:none;width:58px;font-size:11.5px;padding-top:1px}
+.kv .v{flex:1;min-width:0;word-break:break-all}
+.kv .v.miss{color:var(--txt3);font-style:italic}
+
+.mono-box{background:#0a0d12;border:1px solid var(--line);border-radius:10px;padding:10px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.65;
+  color:#b8c6da;max-height:250px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.mono-box.sm{max-height:160px;font-size:11px}
+
+.note{
+  display:flex;gap:8px;padding:10px 12px;border-radius:11px;font-size:12.5px;line-height:1.55;
+  background:rgba(72,184,255,.07);border:1px solid rgba(72,184,255,.18);color:#a9cbe8;
+}
+.note.warn{background:rgba(255,182,72,.07);border-color:rgba(255,182,72,.2);color:#e8cfa9}
+.note.err{background:rgba(255,107,107,.08);border-color:rgba(255,107,107,.24);color:#f0b0b0}
+.note.ok{background:rgba(61,220,132,.07);border-color:rgba(61,220,132,.2);color:#a9e8c4}
+.note .ico{flex:none}
+
+/* 底部导航 */
+nav.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:45;
+  display:flex;background:rgba(18,22,29,.97);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);
+}
+nav.tabbar button{
+  flex:1;border:0;background:transparent;color:var(--txt3);padding:8px 0 7px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;
+  font-size:10px;transition:.15s;
+}
+nav.tabbar button .ic{font-size:17px;line-height:1.1;filter:grayscale(1) opacity(.5);transition:.15s}
+nav.tabbar button.on{color:var(--acc)}
+nav.tabbar button.on .ic{filter:none;transform:translateY(-1px)}
+
+/* 抽屉 */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:60;opacity:0;pointer-events:none;transition:.2s}
+.mask.on{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;bottom:0;left:0;width:86%;max-width:340px;z-index:61;
+  background:var(--bg2);border-right:1px solid var(--line);
+  transform:translateX(-102%);transition:transform .24s cubic-bezier(.3,.9,.3,1);
+  display:flex;flex-direction:column;padding-top:calc(env(safe-area-inset-top) + 10px);
+}
+.drawer.on{transform:none}
+.drawer-h{padding:6px 14px 12px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--line)}
+.drawer-h .t{flex:1;font-size:15px;font-weight:600}
+.drawer-b{flex:1;overflow:auto;padding:10px 12px}
+.libitem{
+  display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:11px;
+  background:var(--card);border:1px solid var(--line);margin-bottom:8px;cursor:pointer;
+}
+.libitem.on{border-color:var(--acc2);background:rgba(72,184,255,.07)}
+.libitem .li{flex:1;min-width:0}
+.libitem .ln{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.libitem .ls{font-size:10.5px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{width:26px;height:26px;border-radius:8px;border:0;background:transparent;color:var(--txt3);
+  font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;padding:0}
+
+/* toast */
+#toast{
+  position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 88px);transform:translate(-50%,12px);
+  background:rgba(35,44,58,.98);border:1px solid var(--line2);color:var(--txt);
+  padding:10px 18px;border-radius:22px;font-size:12.5px;z-index:99;opacity:0;pointer-events:none;
+  transition:.22s;max-width:84vw;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5);line-height:1.5;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ============ 点选器（全屏） ============ */
+.pick{position:fixed;inset:0;z-index:70;background:#0b0e13;display:none;flex-direction:column}
+.pick.on{display:flex}
+.pick-top{
+  background:var(--card);border-bottom:1px solid var(--line);flex:none;
+  padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+}
+.pick-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pick-bar .pt{flex:1;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick-hint{font-size:11.5px;color:var(--txt2);line-height:1.5;margin-bottom:8px}
+.pick-hint b{color:var(--acc)}
+.pick-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin:0 -2px}
+.chip{
+  flex:none;padding:6px 11px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);
+  color:var(--txt2);font-size:12px;cursor:pointer;white-space:nowrap;transition:.15s;
+}
+.chip.on{background:rgba(72,184,255,.16);border-color:var(--acc);color:var(--acc);font-weight:600}
+.chip.filled{border-color:rgba(61,220,132,.45);color:var(--ok)}
+.chip.filled.on{background:rgba(61,220,132,.16)}
+.pick-frame{flex:1;position:relative;background:#fff;overflow:hidden}
+.pick-frame iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+.pick-frame .loading{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;background:#0b0e13;color:var(--txt2);font-size:13px;
+}
+.spin{width:26px;height:26px;border:2px solid rgba(72,184,255,.25);border-top-color:var(--acc);
+  border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.pick-bottom{
+  flex:none;background:var(--card);border-top:1px solid var(--line);
+  padding:8px 12px calc(env(safe-area-inset-bottom) + 8px);
+  display:flex;align-items:center;gap:8px;
+}
+.pick-sel{flex:1;min-width:0;font-size:11px;color:var(--txt3)}
+.pick-sel .sv{display:block;font-family:ui-monospace,monospace;font-size:11px;color:var(--acc);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 语法速查 */
+.cheat{font-size:12px;color:var(--txt2);line-height:1.7}
+.cheat code{background:var(--bg2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+  font-family:ui-monospace,monospace;font-size:11px;color:var(--acc);margin:0 1px}
+.cheat .cr{display:flex;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.cheat .cr:last-child{border:0}
+.cheat .cr b{flex:none;width:88px;color:var(--txt);font-weight:500;font-size:11.5px}
+details summary{cursor:pointer;list-style:none;font-size:12.5px;color:var(--txt2);padding:3px 0}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'▸ ';color:var(--txt3)}
+details[open] summary::before{content:'▾ '}
+
+.sep{height:1px;background:var(--line);margin:14px 0}
+.tiny{font-size:11px;color:var(--txt3);line-height:1.55}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
+.center{text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="hbtn" id="btnDrawer" aria-label="书源库">☰</button>
+  <div class="htitle">
+    <div class="nm" id="hName">新书源</div>
+    <div class="sub"><span class="dot" id="hDot"></span><span id="hSub">草稿自动保存</span></div>
+  </div>
+  <button class="hbtn" id="btnNew" aria-label="新建" title="新建书源">＋</button>
+  <button class="hbtn" id="btnSave" aria-label="保存" title="保存">✓</button>
+</header>
+
+<main>
+  <section class="page on" data-page="wizard"><div id="pageWizard"></div></section>
+  <section class="page" data-page="rules"><div id="pageRules"></div></section>
+  <section class="page" data-page="test"><div id="pageTest"></div></section>
+  <section class="page" data-page="export"><div id="pageExport"></div></section>
+</main>
+
+<nav class="tabbar" id="tabbar">
+  <button class="on" data-tab="wizard"><span class="ic">🪄</span>向导</button>
+  <button data-tab="rules"><span class="ic">🎯</span>规则</button>
+  <button data-tab="test"><span class="ic">🔍</span>测试</button>
+  <button data-tab="export"><span class="ic">📦</span>导出</button>
+</nav>
+
+<div class="mask" id="mask"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-h">
+    <div class="t">我的书源</div>
+    <button class="btn sm gho" id="btnImport">导入</button>
+    <button class="btn sm pri" id="btnAddLib">新建</button>
+  </div>
+  <div class="drawer-b" id="libList"></div>
+</aside>
+
+<!-- 点选器 -->
+<div class="pick" id="pick">
+  <div class="pick-top">
+    <div class="pick-bar">
+      <button class="hbtn" id="pickClose" style="width:30px;height:30px;font-size:14px">✕</button>
+      <div class="pt" id="pickTitle">点选</div>
+      <button class="btn sm gho" id="pickSkip">跳过</button>
+    </div>
+    <div class="pick-hint" id="pickHint"></div>
+    <div class="pick-chips" id="pickChips"></div>
+  </div>
+  <div class="pick-frame" id="pickFrame">
+    <div class="loading"><div class="spin"></div><div id="pickLoadTxt">正在加载网页…</div></div>
+  </div>
+  <div class="pick-bottom">
+    <div class="pick-sel" id="pickSel">还没点选 · 在上面的网页里点一下目标内容</div>
+    <button class="btn sm ok" id="pickConfirm" disabled>用它</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- 手动提供网页 -->
+<div class="pick" id="htmlModal" style="z-index:76">
+  <div class="pick-top">
+    <div class="pick-bar">
+      <button class="hbtn" id="hmClose" style="width:30px;height:30px;font-size:14px">✕</button>
+      <div class="pt">手动提供网页</div>
+      <button class="btn sm gho" id="hmFile">选文件</button>
+    </div>
+    <div class="pick-hint" id="hmHint"></div>
+  </div>
+  <div style="flex:1;overflow:auto;padding:12px">
+    <textarea id="hmText" class="mono" style="min-height:220px;font-size:11px" placeholder="把网页源码粘贴到这里…"></textarea>
+  </div>
+  <div class="pick-bottom">
+    <button class="btn pri wide" id="hmOk">用这段内容继续</button>
+  </div>
+</div>
+<input type="file" id="hmFileInput" accept=".html,.htm,.txt" class="hide">
+
+<input type="file" id="fileInput" accept=".json,application/json,text/plain" class="hide">
+<script>
+/* ============================================================
+   书源工坊 · 零基础 Legado 书源制作工具
+   纯前端单文件 · 无依赖 · 手机优先
+   ============================================================ */
+
+const LS_LIB = 'bs_studio_lib_v1';
+const LS_CFG = 'bs_studio_cfg_v1';
+
+/* 代理池：依次尝试。公共代理都不太稳定，最靠谱的是自己部署一个（见 README） */
+const PROXIES = [
+  { name:'cors.lol',   build:u=>'https://api.cors.lol/?url='+encodeURIComponent(u) },
+  { name:'cors.eu.org',build:u=>'https://cors.eu.org/'+u },
+  { name:'allorigins', build:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u) },
+  { name:'codetabs',   build:u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u) },
+  { name:'thingproxy', build:u=>'https://thingproxy.freeboard.io/fetch/'+u },
+];
+
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+
+let LIB = [];        // 全部书源
+let CUR = 0;         // 当前索引
+let S = null;        // 当前书源对象
+let CFG = { step:0, proxy:0, customProxy:'' };
+let T = { books:[], book:null, chapters:[], chapter:null, pages:{}, manual:{} };
+
+/* ---------- 小工具 ---------- */
+function toast(msg, ms=2000){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('on'), ms);
+}
+function uid(){ return 'bs'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function clean(s){ return String(s==null?'':s).replace(/\s+/g,' ').trim(); }
+function trunc(s,n=110){ s=clean(s); return s.length>n? s.slice(0,n)+'…' : s; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function host(u){ try{ return new URL(u).hostname }catch(e){ return '' } }
+function absUrl(u, base){ try{ return new URL(u, base).href }catch(e){ return u||'' } }
+
+/* ---------- 存储 ---------- */
+function saveLib(){
+  try{
+    localStorage.setItem(LS_LIB, JSON.stringify({ v:1, cur:CUR, list:LIB }));
+  }catch(e){ console.warn('保存失败', e); }
+}
+function loadLib(){
+  try{
+    const raw = localStorage.getItem(LS_LIB);
+    if(raw){
+      const d = JSON.parse(raw);
+      if(Array.isArray(d.list) && d.list.length){ LIB = d.list; CUR = Math.min(d.cur||0, LIB.length-1); return; }
+    }
+  }catch(e){}
+  LIB = [blankSource()]; CUR = 0;
+}
+function saveCfg(){ try{ localStorage.setItem(LS_CFG, JSON.stringify(CFG)); }catch(e){} }
+function loadCfg(){
+  try{ const d = JSON.parse(localStorage.getItem(LS_CFG)||'{}'); Object.assign(CFG, d); }catch(e){}
+}
+
+/* ---------- 空白书源 ---------- */
+function blankSource(){
+  return {
+    _id: uid(), _step: 0,
+    bookSourceName:'', bookSourceUrl:'', bookSourceGroup:'', bookSourceComment:'',
+    bookSourceType:0, customOrder:0, enabled:true, enabledExplore:true,
+    enabledCookieJar:true, header:'', searchUrl:'', exploreUrl:'',
+    bookUrlPattern:'', weight:0, respondTime:180000, lastUpdateTime:0,
+    ruleSearch:{ bookList:'', name:'', author:'', bookUrl:'', coverUrl:'', intro:'', kind:'', lastChapter:'', wordCount:'', checkKeyWord:'' },
+    ruleBookInfo:{ name:'', author:'', coverUrl:'', intro:'', kind:'', lastChapter:'', tocUrl:'', wordCount:'', canReName:'' },
+    ruleToc:{ chapterList:'', chapterName:'', chapterUrl:'', nextTocUrl:'', updateTime:'', isVolume:'' },
+    ruleContent:{ content:'', nextContentUrl:'', webJs:'', sourceRegex:'', replaceRegex:'' }
+  };
+}
+
+function getS(dot){
+  return dot.split('.').reduce((o,k)=> (o==null?null:o[k]), S);
+}
+function setS(dot, val){
+  const ks = dot.split('.'); let o = S;
+  for(let i=0;i<ks.length-1;i++){ if(!o[ks[i]]) o[ks[i]] = {}; o = o[ks[i]]; }
+  o[ks[ks.length-1]] = val;
+}
+
+/* ============================================================
+   字段定义（规则页 & 向导共用）
+   ============================================================ */
+const SCHEMA = {
+  search: {
+    label:'搜索', icon:'🔍',
+    note:'搜索页用来「列出找到的书」。先框住每本书的整块，再指出书名、作者、链接。',
+    fields:[
+      { k:'ruleSearch.bookList', l:'书籍列表', ph:'class.result-list@tag.li', req:1,
+        tip:'框住<b>一本书的整块区域</b>，命中几个就返回几本书。' },
+      { k:'ruleSearch.name', l:'书名', ph:'tag.h3@text', req:1, tip:'点书名文字。' },
+      { k:'ruleSearch.bookUrl', l:'详情链接', ph:'tag.a@href', req:1, tip:'点书名或封面，取它的链接地址。' },
+      { k:'ruleSearch.author', l:'作者', ph:'class.author@text' },
+      { k:'ruleSearch.coverUrl', l:'封面', ph:'tag.img@src' },
+      { k:'ruleSearch.intro', l:'简介', ph:'class.intro@text' },
+      { k:'ruleSearch.kind', l:'分类', ph:'class.type@text' },
+      { k:'ruleSearch.lastChapter', l:'最新章节', ph:'class.last@tag.a@text' },
+    ]
+  },
+  info: {
+    label:'详情', icon:'📖',
+    note:'详情页用来「确认书名、封面、简介」，并为下一章拿到目录入口。留空则沿用搜索页的信息。',
+    fields:[
+      { k:'ruleBookInfo.name', l:'书名', ph:'tag.h1@text', req:1 },
+      { k:'ruleBookInfo.author', l:'作者', ph:'id.info@tag.p.0@text' },
+      { k:'ruleBookInfo.coverUrl', l:'封面', ph:'id.fmimg@src' },
+      { k:'ruleBookInfo.intro', l:'简介', ph:'id.intro@html' },
+      { k:'ruleBookInfo.kind', l:'分类', ph:'class.con@tag.a@text' },
+      { k:'ruleBookInfo.lastChapter', l:'最新章节', ph:'id.info@tag.p.-1@tag.a@text' },
+      { k:'ruleBookInfo.tocUrl', l:'目录页链接', ph:'', tip:'多数站点详情页就是目录页，留空即可。' },
+    ]
+  },
+  toc: {
+    label:'目录', icon:'📑',
+    note:'目录页用来「列出全部章节」。点中一章，工具会自动认出所有同类的章节。',
+    fields:[
+      { k:'ruleToc.chapterList', l:'章节列表', ph:'id.list@tag.dl@tag.dd', req:1,
+        tip:'点任意一个章节条目，工具会把整份目录都框出来。' },
+      { k:'ruleToc.chapterName', l:'章节名', ph:'tag.a@text', req:1 },
+      { k:'ruleToc.chapterUrl', l:'章节链接', ph:'tag.a@href', req:1 },
+      { k:'ruleToc.nextTocUrl', l:'目录下一页', ph:'', tip:'目录分页的站点才需要。' },
+    ]
+  },
+  content: {
+    label:'正文', icon:'📄',
+    note:'正文页用来「取出一章的文字」。点一下正文区域就行，工具会用 @html 保住段落换行。',
+    fields:[
+      { k:'ruleContent.content', l:'正文内容', ph:'id.content@html', req:1,
+        tip:'点正文文字最多的那块区域。' },
+      { k:'ruleContent.nextContentUrl', l:'正文下一页', ph:'', tip:'正文分页的站点才需要。' },
+      { k:'ruleContent.replaceRegex', l:'净化正则', ph:'', tip:'去除广告、求订阅之类的干扰文字，可留空。' },
+    ]
+  }
+};
+
+/* 基础信息字段 */
+const BASE_FIELDS = [
+  { k:'bookSourceName', l:'书源名称', ph:'例：某某小说网', tip:'在阅读 App 的书源列表里显示的名字，随便起。' },
+  { k:'bookSourceUrl', l:'站点首页', ph:'https://www.example.com', tip:'这个小说网站的首页地址，必须以 http:// 或 https:// 开头。' },
+  { k:'searchUrl', l:'搜索地址', ph:'/search?q={{key}}', tip:'{{key}} 代表搜索关键词，工具会自动帮你生成。' },
+  { k:'bookSourceGroup', l:'分组', ph:'小说' , tip:'多个分组用英文逗号隔开，可留空。'},
+];
+
+/* 判断是否配好了某个模块 */
+function hasMod(m){
+  const f = SCHEMA[m].fields.filter(x=>x.k.includes('bookList')||x.k.includes('chapterList')||x.k.endsWith('.content')||x.k==='ruleBookInfo.name');
+  return f.every(x=> clean(getS(x.k)) !== '');
+}
+function doneCount(){
+  let n = 0;
+  if(clean(S.bookSourceUrl) && clean(S.searchUrl)) n++;
+  if(hasMod('search')) n++;
+  if(hasMod('toc')) n++;
+  if(hasMod('content')) n++;
+  return n;
+}
+
+/* ============================================================
+   Part 2 · 抓取层（跨域代理 + 自动识别编码）
+   ============================================================ */
+function decodeBuf(buf){
+  let enc = 'utf-8';
+  try{
+    const head = new TextDecoder('latin1').decode(buf.slice(0, 5120)).toLowerCase();
+    const m = head.match(/charset\s*=\s*["']?\s*([\w-]+)/);
+    if(m){
+      const c = m[1];
+      if(/^(gb|gbk|gb2312|gb18030|x-gbk)/.test(c)) enc = 'gbk';
+      else if(/^big5/.test(c)) enc = 'big5';
+    }
+  }catch(e){}
+  let txt = '';
+  try{ txt = new TextDecoder(enc).decode(buf); }catch(e){ txt = new TextDecoder('utf-8').decode(buf); }
+  if(enc === 'utf-8'){
+    const bad = (txt.match(/\uFFFD/g)||[]).length;
+    if(bad > 3){ try{ txt = new TextDecoder('gbk').decode(buf); }catch(e){} }
+  }
+  return txt;
+}
+
+async function fetchOne(url, timeout=18000){
+  const ctl = new AbortController();
+  const timer = setTimeout(()=>ctl.abort(), timeout);
+  try{
+    const r = await fetch(url, { signal:ctl.signal, redirect:'follow' });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return await r.arrayBuffer();
+  } finally { clearTimeout(timer); }
+}
+
+/** 当前可用的代理顺序：自定义优先，其次内置池 */
+function proxyList(){
+  const arr = [];
+  const cp = clean(CFG.customProxy || '');
+  if(cp){
+    arr.push({ name:'自定义代理', build:u=>
+      cp.includes('{url}') ? cp.replace('{url}', encodeURIComponent(u)) : cp + encodeURIComponent(u) });
+  }
+  for(const p of PROXIES) arr.push(p);
+  return arr;
+}
+
+/** 用代理抓网页，返回解码后的 HTML 文本 */
+async function grab(url){
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const list = proxyList();
+  const order = list.slice(CFG.proxy).concat(list.slice(0, CFG.proxy));
+  const errs = [];
+  for(const p of order){
+    try{
+      const buf = await fetchOne(p.build(url));
+      const txt = decodeBuf(buf);
+      if(txt && txt.trim().length > 120){
+        CFG.proxy = list.indexOf(p);
+        if(!/<html|<\?xml|<body|<div|<\?|<rss/i.test(txt) && txt.length < 400){
+          errs.push(p.name + ': 返回内容异常'); continue;
+        }
+        return { html: txt, proxy: p.name };
+      }
+      errs.push(p.name + ': 内容为空');
+    }catch(e){ errs.push(p.name + ': ' + (e.name === 'AbortError' ? '超时' : e.message)); }
+  }
+  const err = new Error('NETFAIL|' + errs.join('\n'));
+  err.netfail = true;
+  throw err;
+}
+
+/** 把 HTML 解析成 Document，并注入 base 便于相对链接还原 */
+function parseHtml(html, base){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.__base = base || '';
+  return doc;
+}
+
+/** 抓取并解析 */
+async function grabDoc(url){
+  const key = url;
+  if(T.pages[key]) return T.pages[key];
+  const { html, proxy } = await grab(url);
+  const doc = parseHtml(html, url);
+  const pack = { doc, html, base: url, proxy };
+  T.pages[key] = pack;
+  return pack;
+}
+
+/* ============================================================
+   Part 3 · 规则引擎（在浏览器里模拟 Legado 的 Jsoup 规则）
+   ============================================================ */
+const EMPTY = { els:[], text:'', list:[] };
+const ATTR_RE = /^(text|ownText|html|all|outerHtml|href|src|content|title|alt|value|poster)$/i;
+
+function cssSeg(seg){
+  seg = String(seg).trim();
+  if(/^class\./i.test(seg)) return '.' + seg.slice(6);
+  if(/^id\./i.test(seg))    return '#' + seg.slice(3);
+  if(/^tag\./i.test(seg))   return seg.slice(4);
+  if(/^text\./i.test(seg))  return seg.slice(5);
+  return seg;
+}
+function splitIdx(seg){
+  let m = seg.match(/^(.*?)(?:\.(-?\d+))$/);
+  if(m && m[1] && !/^\./.test(m[1])) return { s:m[1], i:parseInt(m[2],10) };
+  m = seg.match(/^(.*?)!(-?\d+)$/);
+  if(m && m[1]) return { s:m[1], i:parseInt(m[2],10) };
+  return { s:seg, i:null };
+}
+function ownText(n){
+  let t = '';
+  n.childNodes.forEach(c=>{ if(c.nodeType === 3) t += c.textContent; });
+  return clean(t);
+}
+function getAttrVal(n, attr, base){
+  const a = attr.replace(/!-?\d+$/,'');
+  if(/^text$/i.test(a))     return clean(n.textContent);
+  if(/^ownText$/i.test(a))  return ownText(n);
+  if(/^html$/i.test(a))     return n.innerHTML != null ? n.innerHTML : '';
+  if(/^all$|^outerHtml$/i.test(a)) return n.outerHTML != null ? n.outerHTML : '';
+  let v = n.getAttribute ? n.getAttribute(a) : null;
+  if(v == null) return '';
+  if(/^(href|src|poster|data-src|data-original)$/i.test(a)) v = absUrl(v, base);
+  return v;
+}
+
+/** 核心：解析一条规则，返回 {els, text} */
+function resolveRule(rule, roots, base){
+  const EMPTY_LOCAL = { els:[], text:'' };
+  rule = String(rule == null ? '' : rule).trim();
+  if(!rule) return EMPTY_LOCAL;
+  if(!roots || !roots.length) roots = [document];
+  if(!base){
+    const r0 = roots[0];
+    const d = (r0 && r0.ownerDocument) || r0;
+    base = (d && d.__base) || '';
+  }
+
+  // 或：||
+  if(rule.includes('||')){
+    for(const part of rule.split('||')){
+      const r = resolveRule(part.trim(), roots, base);
+      if((r.els && r.els.length) || clean(r.text)) return r;
+    }
+    return EMPTY_LOCAL;
+  }
+  // JS 规则
+  if(/^@?js:/i.test(rule) || /^<js>/i.test(rule)){
+    return { els:[], text:'〔JS 规则 · 需在阅读 App 内运行，本地测试请跳过〕' };
+  }
+  // 正则截取 :regex
+  if(/^:/.test(rule)){
+    const src = roots.map(r=> (r.outerHTML || (r.documentElement && r.documentElement.outerHTML) || '')).join('');
+    try{
+      const m = new RegExp(rule.slice(1), 'i').exec(src);
+      if(m) return { els:[], text: clean(m[1] != null ? m[1] : m[0]) };
+    }catch(e){ return { els:[], text:'〔正则写法有误：'+e.message+'〕' }; }
+    return EMPTY_LOCAL;
+  }
+  // JSONPath
+  if(/^\$[.\[]/.test(rule)) return resolveJson(rule, roots, base);
+
+  // CSS 链
+  const segs = rule.split('@').map(s=>s.trim()).filter(s=>s !== '');
+  let attr = null;
+  if(segs.length){
+    const last = segs[segs.length-1];
+    const bare = last.replace(/!-?\d+$/,'');
+    if(ATTR_RE.test(bare) || (/^[A-Za-z][\w-]*$/.test(bare) && !/^[^\s]*[.\[]/.test(bare))){
+      attr = last; segs.pop();
+    }
+  }
+  let nodes = roots.slice();
+  for(const raw of segs){
+    const { s, i } = splitIdx(raw);
+    const css = cssSeg(s);
+    if(!css) continue;
+    const next = [];
+    for(const n of nodes){
+      try{ next.push(...n.querySelectorAll(css)); }catch(e){ /* 非法选择器 */ }
+    }
+    nodes = next;
+    if(i !== null && nodes.length){
+      const p = i < 0 ? nodes.length + i : i;
+      nodes = nodes[p] ? [nodes[p]] : [];
+    }
+    if(!nodes.length) return EMPTY_LOCAL;
+  }
+  if(attr){
+    const vals = nodes.map(n=>getAttrVal(n, attr, base)).filter(v=>v !== '' && v != null);
+    return { els:nodes, text: vals.join('\n') };
+  }
+  return { els:nodes, text: nodes.map(n=>clean(n.textContent)).join('\n') };
+}
+
+function resolveJson(rule, roots, base){
+  const src = roots.map(r=> (r.__raw || r.textContent || '')).join('');
+  let data;
+  try{ data = JSON.parse(src); }catch(e){
+    // 可能是 HTML 里嵌的 JSON，尝试取第一个 { 到最后一个 }
+    const a = src.indexOf('{'), b = src.lastIndexOf('}');
+    if(a>=0 && b>a){ try{ data = JSON.parse(src.slice(a,b+1)); }catch(e2){} }
+  }
+  if(data === undefined) return { els:[], text:'〔JSONPath 需要 JSON 数据，当前页面是 HTML〕' };
+  const parts = rule.replace(/^\$\.?/,'').split(/\.(?![^\[]*\])/).filter(Boolean);
+  let cur = data;
+  for(const p of parts){
+    if(cur == null) break;
+    const m = p.match(/^([\w\-\u4e00-\u9fa5]*)\[(\d+|\*)\]$/);
+    if(m){
+      if(m[1]) cur = cur[m[1]];
+      if(Array.isArray(cur)) cur = m[2]==='*' ? cur : cur[parseInt(m[2],10)];
+    } else if(p === '*'){
+      if(Array.isArray(cur)) return { els:[], text: cur.join('\n') };
+      return { els:[], text: String(cur) };
+    } else {
+      cur = cur[p];
+    }
+  }
+  if(Array.isArray(cur)) return { els:[], text: cur.join('\n') };
+  if(typeof cur === 'object') return { els:[], text: JSON.stringify(cur) };
+  return { els:[], text: cur == null ? '' : String(cur) };
+}
+
+/** 便捷取值 */
+function ruleVal(rule, el, base){
+  const r = resolveRule(rule, el ? [el] : [document], base);
+  return clean((r.text || '').split('\n')[0]);
+}
+
+/* ============================================================
+   Part 4 · 选择器生成器（点选器的"大脑"）
+   ============================================================ */
+function segOf(el){
+  const doc = el.ownerDocument || document;
+  const tag = el.tagName.toLowerCase();
+  const id = el.getAttribute('id');
+  if(id && /^[A-Za-z][\w-]*$/.test(id)){
+    try{ if(doc.querySelectorAll('#'+id).length <= 1) return 'id.' + id; }catch(e){}
+  }
+  const cls = [...el.classList].filter(c=>/^[A-Za-z][\w-]*$/.test(c) && !/^(active|on|cur|current|hover|show|open|selected|clearfix|row|col|item|list|box|wrap|main|content)$/.test(c));
+  if(cls.length){
+    // 优先挑一个在该页出现次数较少的 class
+    const scored = cls.map(c=>({ c, n: doc.getElementsByClassName(c).length }))
+                      .sort((a,b)=>a.n - b.n);
+    return 'class.' + scored[0].c;
+  }
+  return 'tag.' + tag;
+}
+
+/** 从 root 内定位 el 的最短规则（不含属性） */
+function shortestPath(root, el, allowMany){
+  const doc = el.ownerDocument || document;
+  const stop = doc.documentElement;
+  const chain = [];
+  let cur = el;
+  while(cur && cur !== root && cur !== stop && cur !== doc.body){
+    chain.unshift(cur);
+    cur = cur.parentElement;
+  }
+  if(!chain.length) return '';
+  // 由短到长，先找到能用的最短写法
+  for(let start = chain.length - 1; start >= 0; start--){
+    const rule = chain.slice(start).map(e=>segOf(e)).join('@');
+    const hits = resolveRule(rule, [root]).els;
+    if(allowMany ? hits.length >= 1 : (hits.length === 1 && hits[0] === el)){
+      return rule;
+    }
+  }
+  return chain.map(e=>segOf(e)).join('@');
+}
+
+/** 从整个文档定位 el 的最短规则 */
+function pathFromDoc(el){
+  const doc = el.ownerDocument || document;
+  return shortestPath(doc.documentElement, el, false) || shortestPath(doc.body, el, false);
+}
+
+/** 用户点中"一本书/一个章节"时，猜出列表规则 */
+function guessListRule(el){
+  const doc = el.ownerDocument || document;
+  const cands = [];
+  let cur = el;
+  let depth = 0;
+  while(cur && cur !== doc.documentElement && depth < 9){
+    if(cur.parentElement && cur !== doc.body){
+      const rule = shortestPath(doc.documentElement, cur, true);
+      const hits = resolveRule(rule, [doc.documentElement]).els;
+      const covers = hits.some(h=> h === el || (h.contains && h.contains(el)));
+      if(hits.length >= 2 && hits.length <= 3000 && covers && rule){
+        cands.push({ rule, n: hits.length, el: cur, text: clean(cur.textContent).length, depth });
+      }
+    }
+    cur = cur.parentElement; depth++;
+  }
+  if(!cands.length) return null;
+  // 命中数最少的优先；并列时取"信息量更大"的那一层（一张书卡 > 只含书名的标题）
+  cands.sort((a,b)=> (a.n - b.n) || (b.text - a.text) || (a.depth - b.depth));
+  return cands[0];
+}
+
+/** 找 el 自身或最近的 a/img 祖先 */
+function nearestTag(el, tag){
+  const doc = el.ownerDocument || document;
+  let cur = el;
+  while(cur && cur !== doc.body){
+    if(cur.tagName && cur.tagName.toLowerCase() === tag) return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+}
+
+/**
+ * 为一个点中的元素生成"字段规则"
+ * kind: text | url | img | html | list
+ * listKey: 该字段所在的列表规则（如 ruleSearch.bookList），有值时生成"相对列表项"的规则
+ */
+function buildRule(el, kind, listKey){
+  const doc = el.ownerDocument || document;
+
+  if(kind === 'list'){
+    const g = guessListRule(el);
+    if(!g) return { rule:'', count:0, note:'没能识别出列表结构，试着点得靠外一点（整张卡片的空白处）' };
+    return { rule:g.rule, count:g.n, note:`✓ 识别到 ${g.n} 个同类项` };
+  }
+
+  let target = el, attr = 'text';
+  if(kind === 'url'){
+    const a = nearestTag(el, 'a');
+    if(a){ target = a; attr = 'href'; }
+    else return { rule:'', count:0, note:'这里没有链接，请点书名或封面上' };
+  }
+  if(kind === 'img'){
+    const img = nearestTag(el, 'img');
+    if(img){ target = img; attr = 'src'; }
+    else return { rule:'', count:0, note:'这里没有图片，请点封面上' };
+  }
+  if(kind === 'html'){
+    attr = 'html';
+    // 点正文时常常点在某一段上，自动上提到"装正文的那个大盒子"
+    let cur = target;
+    let guard = 0;
+    while(cur.parentElement && guard++ < 5
+          && cur.parentElement !== doc.body && cur.parentElement !== doc.documentElement){
+      const cl = clean(cur.textContent).length;
+      const pl = clean(cur.parentElement.textContent).length;
+      if(pl > cl * 1.5 && pl - cl > 50) cur = cur.parentElement;
+      else break;
+    }
+    target = cur;
+  }
+
+  // 找一个"列表项"作为相对基准
+  let base = null;
+  if(listKey && clean(getS(listKey))){
+    try{
+      const items = resolveRule(getS(listKey), [doc.documentElement]).els;
+      base = items.find(it=> it.contains(target)) || null;
+    }catch(e){}
+  }
+
+  const p = base ? shortestPath(base, target, false) : pathFromDoc(target);
+  const rule = p ? p + '@' + attr : '@' + attr;
+  const r = resolveRule(rule, [base || doc.documentElement]);
+  const v = clean((r.text||'').split('\n')[0]);
+  return { rule, count: r.els.length, value: v, base,
+    note: v ? '✓ 取到：' + trunc(v, 46) : '⚠ 没取到内容，换个位置点' };
+}
+
+/* ============================================================
+   Part 5 · 地址推导（帮小白把搜索网址变成 {{key}}）
+   ============================================================ */
+function buildSearchUrl(pageUrl, keyword){
+  let u = pageUrl.trim();
+  if(!/^https?:/i.test(u)) u = 'https://' + u;
+  let result = u, hit = false;
+  if(keyword){
+    const k = keyword.trim();
+    if(k && result.includes(k)){
+      result = result.split(k).join('{{key}}');
+      hit = true;
+    } else if(k){
+      const enc = encodeURIComponent(k);
+      if(result.toLowerCase().includes(enc.toLowerCase())){
+        result = result.replace(new RegExp(enc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'ig'), '{{key}}');
+        hit = true;
+      }
+    }
+  }
+  // 没命中就用常见参数名兜底
+  if(!hit){
+    try{
+      const o = new URL(result);
+      const keys = ['q','key','keyword','wd','searchkey','searchKey','searchword','s','query','kw','search'];
+      for(const k of keys){
+        if(o.searchParams.has(k)){
+          result = result.replace(/([?&])((?:q|key|keyword|wd|searchkey|searchKey|searchword|s|query|kw|search))=([^&]*)/i, (m,a,b)=> a + b + '={{key}}');
+          hit = true; break;
+        }
+      }
+    }catch(e){}
+  }
+  // 与站点首页相同的部分转成相对路径，更通用
+  const base = (S && S.bookSourceUrl) ? S.bookSourceUrl.replace(/\/+$/,'') : '';
+  if(hit && base && result.startsWith(base + '/')){
+    result = result.slice(base.length) || '/';
+  }
+  return { url: result, ok: hit };
+}
+
+/** 抓首页，自动猜搜索接口 */
+async function sniffSearch(baseUrl){
+  const pack = await grabDoc(baseUrl);
+  const doc = pack.doc;
+  const forms = [...doc.querySelectorAll('form')];
+  for(const f of forms){
+    const action = (f.getAttribute('action')||'').toLowerCase();
+    const inputs = [...f.querySelectorAll('input')];
+    const qi = inputs.find(i=>/^(q|key|keyword|wd|searchkey|searchword|s|query|kw)$/i.test(i.getAttribute('name')||''));
+    if(qi && (/search|so|s\.php|biqu/i.test(action) || inputs.length)){
+      const name = qi.getAttribute('name');
+      let action2 = f.getAttribute('action') || '';
+      if(!/^https?:|^\//.test(action2)) action2 = '/' + action2.replace(/^\.\//,'');
+      return { url: action2 + (action2.includes('?')?'&':'?') + name + '={{key}}', how:'首页搜索框（参数 '+name+'）' };
+    }
+  }
+  const links = [...doc.querySelectorAll('a')].map(a=>absUrl(a.getAttribute('href')||'', baseUrl))
+    .filter(u=>/search|so\.php|s\?/i.test(u));
+  if(links.length){
+    const u = new URL(links[0]);
+    return { url: links[0].replace(baseUrl.replace(/\/+$/,''), ''), how:'首页里的搜索入口' };
+  }
+  return null;
+}
+
+/* ============================================================
+   Part 6 · 可视化点选器
+   ============================================================ */
+let PK = { targets:[], cur:0, picked:null, onDone:null, doc:null, url:'' };
+let HL = null;
+
+function openPicker(url, targets, onDone, title){
+  PK = { targets, cur:0, picked:null, onDone, doc:null, url, title };
+  $('#pickTitle').textContent = title || '点选';
+  $('#pick').classList.add('on');
+  renderChips();
+  loadPickPage(url);
+}
+function closePicker(){
+  $('#pick').classList.remove('on');
+  const f = $('#pickFrame iframe'); if(f) f.remove();
+  if(PK.onDone) PK.onDone();
+  PK.onDone = null;
+}
+/* ---- 手动提供网页（代理全挂时的保底方案） ---- */
+let HM = { cb:null, url:'' };
+function openHtmlModal(url, cb){
+  HM = { url: url || '', cb };
+  $('#hmText').value = '';
+  $('#hmHint').innerHTML =
+    '在电脑上打开目标网页 → 按 <b>Ctrl+U</b>（Mac 是 ⌘+Option+U）看源码 → <b>Ctrl+A</b> 全选、<b>Ctrl+C</b> 复制 → 粘到下框。<br>' +
+    '也可以点右上角「选文件」导入保存好的 .html。粘完点下面的按钮，点选功能完全一样。';
+  $('#htmlModal').classList.add('on');
+}
+function closeHtmlModal(){ $('#htmlModal').classList.remove('on'); }
+function useManualHtml(){
+  const txt = $('#hmText').value.trim();
+  if(txt.length < 100) return toast('内容太短了，不像网页源码');
+  const base = HM.url || clean(S.bookSourceUrl);
+  const doc = parseHtml(txt, base);
+  T.pages[HM.url || base] = { doc, html: txt, base, manual:true };
+  closeHtmlModal();
+  const cb = HM.cb; HM.cb = null;
+  toast('已载入网页内容');
+  if(cb) cb();
+}
+
+function curTarget(){ return PK.targets[PK.cur] || null; }
+
+function renderChips(){
+  const box = $('#pickChips');
+  box.innerHTML = PK.targets.map((t,i)=>{
+    const filled = clean(getS(t.k)) !== '';
+    return `<div class="chip ${i===PK.cur?'on':''} ${filled?'filled':''}" data-i="${i}">
+      ${filled?'✓ ':''}${esc(t.l)}${t.opt?'':''}
+    </div>`;
+  }).join('');
+  $$('.chip', box).forEach(c=> c.onclick = ()=>{
+    PK.cur = +c.dataset.i; PK.picked = null;
+    renderChips();
+    $('#pickConfirm').disabled = true;
+    const t = curTarget();
+    $('#pickSel').innerHTML = clean(getS(t.k))
+      ? `已设：<span class="sv">${esc(getS(t.k))}</span>`
+      : `还没点选 · ${esc(t.hint||'')}`;
+  });
+  const t = curTarget();
+  $('#pickHint').innerHTML = t ? esc(t.hint || '') : '';
+  if(t && clean(getS(t.k))){
+    $('#pickSel').innerHTML = `已设：<span class="sv">${esc(getS(t.k))}</span>`;
+  }
+}
+
+function sanitizeHtml(doc, base){
+  const tmp = new DOMParser().parseFromString('<!DOCTYPE html>' + doc.documentElement.outerHTML, 'text/html');
+  tmp.querySelectorAll('script,noscript,iframe,object,embed,base').forEach(n=>n.remove());
+  tmp.querySelectorAll('meta[http-equiv]').forEach(n=>{
+    const v = (n.getAttribute('http-equiv')||'').toLowerCase();
+    if(v === 'refresh' || v === 'content-security-policy') n.remove();
+  });
+  const b = tmp.createElement('base');
+  b.setAttribute('href', base);
+  if(tmp.head) tmp.head.prepend(b);
+  return tmp;
+}
+
+async function loadPickPage(url){
+  const box = $('#pickFrame');
+  const old = box.querySelector('iframe'); if(old) old.remove();
+  const oldL = box.querySelector('.loading'); if(oldL) oldL.remove();
+  const ld = document.createElement('div');
+  ld.className = 'loading';
+  ld.innerHTML = '<div class="spin"></div><div>正在打开网页…（首次可能要几秒）</div>';
+  box.appendChild(ld);
+
+  try{
+    const pack = await grabDoc(url);
+    const tmp = sanitizeHtml(pack.doc, pack.base);
+    const f = document.createElement('iframe');
+    f.setAttribute('sandbox', 'allow-same-origin');
+    f.setAttribute('referrerpolicy', 'no-referrer');
+
+    let done = false;
+    const ready = ()=>{
+      if(done) return; done = true;
+      ld.remove();
+      PK.doc = f.contentDocument;
+      bindFrame(f);
+    };
+    f.onload = ready;
+    f.srcdoc = '<!DOCTYPE html>' + tmp.documentElement.outerHTML;
+    box.appendChild(f);
+    setTimeout(()=>{ if(!done && f.contentDocument && f.contentDocument.body) ready(); }, 2500);
+  }catch(e){
+    ld.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'padding:20px 16px;width:100%';
+    const net = !!e.netfail;
+    const detail = net ? e.message.replace('NETFAIL|','') : e.message;
+    wrap.innerHTML = `
+      <div class="note err"><span class="ico">⚠️</span><div>
+        <b>${net ? '抓不到这个网页' : '打开失败'}</b>
+        ${net ? '<div class="tiny mt8" style="color:#c9a6a6;white-space:pre-wrap">' + esc(detail) + '</div>' : '<div class="tiny mt8">' + esc(detail) + '</div>'}
+      </div></div>
+      <div class="note mt12"><span class="ico">💡</span><div>
+        公共免费代理经常被限速。<b>最稳的办法</b>是在「设置」里填一个自己的代理地址（README 里有 3 分钟教程）；<br>
+        实在不行，也可以把网页源码<b>手动贴进来</b>，点选功能完全一样。
+      </div></div>`;
+    const row = document.createElement('div');
+    row.className = 'btn-row mt12';
+    const b1 = document.createElement('button');
+    b1.className = 'btn sm'; b1.textContent = '重新加载';
+    b1.onclick = ()=> loadPickPage(url);
+    const b2 = document.createElement('button');
+    b2.className = 'btn sm pri'; b2.textContent = '手动粘贴网页';
+    b2.onclick = ()=> openHtmlModal(url, ()=> loadPickPage(url));
+    const b3 = document.createElement('button');
+    b3.className = 'btn sm gho'; b3.textContent = '换个代理';
+    b3.onclick = ()=>{ CFG.proxy = (CFG.proxy + 1) % proxyList().length; saveCfg(); loadPickPage(url); };
+    row.appendChild(b1); row.appendChild(b2); row.appendChild(b3);
+    wrap.appendChild(row);
+    ld.appendChild(wrap);
+  }
+}
+
+function unhl(){
+  if(HL && HL.style){
+    HL.style.outline = HL.__ol || '';
+    HL.style.outlineOffset = HL.__olo || '';
+    HL.style.backgroundColor = HL.__bg || '';
+  }
+  HL = null;
+}
+function hl(el){
+  if(!el || el === HL || !el.style) return;
+  unhl();
+  HL = el;
+  el.__ol = el.style.outline; el.__olo = el.style.outlineOffset; el.__bg = el.style.backgroundColor;
+  el.style.outline = '2px solid #48b8ff';
+  el.style.outlineOffset = '-2px';
+  el.style.backgroundColor = 'rgba(72,184,255,.15)';
+}
+
+function bindFrame(f){
+  const d = f.contentDocument;
+  if(!d){ toast('网页加载受限，可点「重新加载」或换代理'); return; }
+  try{
+    d.documentElement.style.cursor = 'crosshair';
+  }catch(e){}
+  d.addEventListener('mouseover', e=>{ hl(e.target); }, true);
+  d.addEventListener('click', e=>{
+    e.preventDefault(); e.stopPropagation();
+    handlePick(e.target);
+  }, true);
+  d.addEventListener('submit', e=>{ e.preventDefault(); e.stopPropagation(); }, true);
+  d.addEventListener('touchstart', e=>{ hl(e.target); }, {capture:true, passive:true});
+}
+
+function handlePick(el){
+  const t = curTarget();
+  if(!t) return;
+  const r = buildRule(el, t.kind, t.listKey);
+  r.el = el;
+  PK.picked = r;
+  const color = r.rule ? (r.value || r.count ? 'var(--ok)' : 'var(--warn)') : 'var(--err)';
+  $('#pickSel').innerHTML =
+    `<span style="color:${color}">${esc(r.note||'')}</span>` +
+    (r.rule ? `<span class="sv">${esc(r.rule)}</span>` : '');
+  $('#pickConfirm').disabled = !r.rule;
+  hl(el);
+}
+
+function doPickConfirm(){
+  const t = curTarget(); const r = PK.picked;
+  if(!t || !r || !r.rule) return;
+  setS(t.k, r.rule);
+
+  // 智能联动：点书名/章节名时顺带把链接也填上
+  if(t.linkTo && r.el && !clean(getS(t.linkTo))){
+    const a = nearestTag(r.el, 'a');
+    if(a){
+      const p = r.base ? shortestPath(r.base, a, false) : pathFromDoc(a);
+      setS(t.linkTo, (p || '') + '@href');
+    }
+  }
+  saveLib();
+  PK.picked = null;
+  $('#pickConfirm').disabled = true;
+
+  const idx = PK.targets.findIndex((x,i)=> i > PK.cur && !clean(getS(x.k)));
+  const anyEmpty = PK.targets.findIndex(x=> !clean(getS(x.k)));
+  if(idx >= 0) PK.cur = idx;
+  else if(anyEmpty >= 0) PK.cur = anyEmpty;
+
+  renderChips();
+  const left = PK.targets.filter(x=> !clean(getS(x.k)) && !x.opt).length;
+  if(left === 0){ toast('这一步点完了 ✓'); setTimeout(closePicker, 400); }
+  else toast('已记录，还剩 ' + left + ' 项');
+}
+
+/* ============================================================
+   Part 7 · 通用渲染工具
+   ============================================================ */
+function field(k, l, ph, opt={}){
+  const v = getS(k);
+  if(opt.type === 'select'){
+    return `<div class="f"><div class="f-h"><div class="f-l">${esc(l)}</div></div>
+      <select data-k="${k}">${(opt.opts||[]).map((o,i)=>`<option value="${i}" ${Number(v)===i?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
+  }
+  const type = opt.type || 'text';
+  const tag = opt.area ? 'textarea' : 'input';
+  const val = v == null ? '' : v;
+  const attrs = `${tag==='input'?`type="${type}"`:'rows="3"'} data-k="${k}" placeholder="${esc(ph||'')}" class="${opt.mono?'mono':''}"`;
+  return `<div class="f">
+    <div class="f-h"><div class="f-l">${esc(l)}</div>${opt.req?'<span class="badge r">必填</span>':''}<div class="sp"></div>${opt.adv?'<span class="badge">高级</span>':''}</div>
+    ${tag==='input'
+      ? `<input ${attrs} value="${esc(val)}">`
+      : `<textarea ${attrs}>${esc(val)}</textarea>`}
+    ${opt.tip?`<div class="f-tip">${opt.tip}</div>`:''}
+  </div>`;
+}
+
+function switchRow(k, l, d){
+  return `<div class="row"><div><div class="rl">${esc(l)}</div><div class="rd">${esc(d||'')}</div></div>
+    <button class="sw ${getS(k)?'on':''}" data-sw="${k}"></button></div>`;
+}
+
+function targetCards(list){
+  return list.map(t=>{
+    const v = clean(getS(t.k));
+    return `<div class="picked ${v?'':'miss'}"><div class="pk">${esc(t.l)}</div>
+      <div class="pv">${v?esc(v):'未点选'}</div></div>`;
+  }).join('');
+}
+
+/* ============================================================
+   Part 8 · 向导
+   ============================================================ */
+const WSTEPS = ['网站','搜书','搜索页','详情','目录','正文','完成'];
+
+const TGT = {
+  search: [
+    { k:'ruleSearch.bookList', l:'书籍列表', kind:'list', hint:'点一下「一本书的整块区域」——封面、书名、作者都包在里面的那一大块' },
+    { k:'ruleSearch.name', l:'书名', kind:'text', listKey:'ruleSearch.bookList', hint:'点书名那几个字', linkTo:'ruleSearch.bookUrl' },
+    { k:'ruleSearch.author', l:'作者', kind:'text', listKey:'ruleSearch.bookList', opt:1, hint:'点「作者：XXX」里的名字（没有可跳过）' },
+    { k:'ruleSearch.coverUrl', l:'封面', kind:'img', listKey:'ruleSearch.bookList', opt:1, hint:'点书的封面图片（没有可跳过）' },
+  ],
+  info: [
+    { k:'ruleBookInfo.name', l:'书名', kind:'text', hint:'点页面上最大的那个书名' },
+    { k:'ruleBookInfo.author', l:'作者', kind:'text', opt:1, hint:'点作者名字' },
+    { k:'ruleBookInfo.coverUrl', l:'封面', kind:'img', opt:1, hint:'点书封图片' },
+    { k:'ruleBookInfo.intro', l:'简介', kind:'text', opt:1, hint:'点简介那一段文字' },
+  ],
+  toc: [
+    { k:'ruleToc.chapterList', l:'章节列表', kind:'list', hint:'点「任意一个章节」——工具会自动把所有章节都认出来' },
+    { k:'ruleToc.chapterName', l:'章节名', kind:'text', listKey:'ruleToc.chapterList', hint:'点章节名的文字', linkTo:'ruleToc.chapterUrl' },
+  ],
+  content: [
+    { k:'ruleContent.content', l:'正文', kind:'html', hint:'点正文文字那一大块区域' },
+  ]
+};
+
+function realSearchUrl(keyword){
+  const base = (S.bookSourceUrl||'').replace(/\/+$/,'');
+  let u = S.searchUrl || '';
+  u = u.split('{{key}}').join(encodeURIComponent(keyword || '小说'))
+       .split('{{page}}').join('1');
+  if(!/^https?:/i.test(u)) u = base + (u.startsWith('/') ? '' : '/') + u;
+  return u;
+}
+
+function renderWizard(){
+  const step = Math.max(0, Math.min(S._step||0, 6));
+  const bar = '<div class="wsteps">' + WSTEPS.map((s,i)=>{
+    const cls = i < step ? 'done' : (i === step ? 'cur' : '');
+    return `<div class="wstep ${cls}"><div class="c">${i<step?'✓':i+1}</div><div class="lb">${s}</div></div>`;
+  }).join('') + '</div>';
+
+  let body = '';
+  if(step === 0) body = wiz0();
+  else if(step === 1) body = wiz1();
+  else if(step === 2) body = wiz2();
+  else if(step === 3) body = wiz3();
+  else if(step === 4) body = wiz4();
+  else if(step === 5) body = wiz5();
+  else body = wiz6();
+
+  const prev = step > 0 ? `<button class="btn gho" data-wz="prev">← 上一步</button>` : '';
+  const next = step < 6 ? `<button class="btn pri" data-wz="next" style="flex:1">下一步 →</button>` : '';
+  const nav = `<div class="btn-row mt16" style="margin-top:18px">${prev}${next}</div>`;
+
+  $('#pageWizard').innerHTML = bar + body + nav;
+  bindWizardExtras();
+}
+
+function bindWizardExtras(){
+  const cp = $('#cfCustomProxy');
+  if(cp){
+    cp.value = CFG.customProxy || '';
+    cp.oninput = ()=>{ CFG.customProxy = cp.value.trim(); saveCfg(); };
+  }
+  const tp = $('#btnTestProxy');
+  if(tp) tp.onclick = testProxies;
+}
+
+/* ---- 第 0 步 ---- */
+function wiz0(){
+  return `
+  <div class="wiz-t">先填两个空，就能开始了</div>
+  <div class="wiz-d">打开你平时看小说的网站，把<b>首页网址</b>复制过来。名字随便起，只要你自己认得出就行。</div>
+  <div class="card">
+    ${field('bookSourceName','书源名称','例：笔趣阁',{req:1})}
+    ${field('bookSourceUrl','网站首页','https://www.xxx.com',{type:'url',req:1,tip:'浏览器顶部的地址栏，点一下就能全选复制'})}
+  </div>
+  <div class="note mt12"><span class="ico">💡</span><div>不知道填什么？随便找个小说站试试也行，做坏了可以随时改。</div></div>
+
+  <details class="mt16"><summary>网络设置（抓不到网页时看这里）</summary>
+    <div class="card mt8">
+      <div class="f">
+        <div class="f-h"><div class="f-l">自己的代理地址（可选）</div></div>
+        <input type="text" id="cfCustomProxy" class="mono" value="${esc(CFG.customProxy||'')}" placeholder="https://你的代理.workers.dev/?url=">
+        <div class="f-tip">工具靠公共代理去抓网页，公共代理经常被限速。填了自己的代理就优先用它（README 有 3 分钟搭建教程）。</div>
+      </div>
+      <button class="btn wide mt8" id="btnTestProxy">测试网络连通性</button>
+      <div id="proxyTestOut"></div>
+    </div>
+  </details>`;
+}
+
+async function testProxies(){
+  const out = $('#proxyTestOut');
+  if(!out) return;
+  const lines = [];
+  out.innerHTML = '<div class="tiny mt8">测试中，每个最多等 8 秒…</div>';
+  for(const p of proxyList()){
+    const t0 = Date.now();
+    try{
+      const buf = await fetchOne(p.build('https://example.com'), 8000);
+      const txt = decodeBuf(buf);
+      lines.push((/example/i.test(txt) ? '✓ ' : '✗ ') + p.name + '  ' + (Date.now()-t0) + 'ms');
+    }catch(e){
+      lines.push('✗ ' + p.name + '  ' + (e.name === 'AbortError' ? '超时' : '不通'));
+    }
+    out.innerHTML = '<div class="mono-box sm mt8">' + lines.join('<br>') + '</div>';
+  }
+  const anyOk = lines.some(l=> l.startsWith('✓'));
+  out.innerHTML = '<div class="mono-box sm mt8">' + lines.join('<br>') + '</div>' +
+    (anyOk
+      ? '<div class="note ok mt8"><span class="ico">✓</span><div>有可用通道，可以正常抓网页</div></div>'
+      : '<div class="note warn mt8"><span class="ico">⚠️</span><div>全部不通。可以：① 换个网络再试；② 填自己的代理；③ 用「手动粘贴网页」。工具本身照常能用。</div></div>');
+}
+
+/* ---- 第 1 步 ---- */
+function wiz1(){
+  const cur = clean(S.searchUrl);
+  return `
+  <div class="wiz-t">这个网站怎么搜书？</div>
+  <div class="wiz-d">打开这个网站，<b>随便搜一本书</b>（你正在追的最好），搜出结果后把<b>整个网页的网址</b>复制过来贴下面。工具会自动把书名的位置换成占位符，以后搜任何书都能用。</div>
+  <div class="card">
+    <div class="f">
+      <div class="f-h"><div class="f-l">你刚才搜的书名</div></div>
+      <input type="text" id="wzKey" value="${esc(S._kw||'')}" placeholder="例：斗破苍穹">
+      <div class="f-tip">这一步只是为了自动生成地址，不会写进书源。</div>
+    </div>
+    <div class="f">
+      <div class="f-h"><div class="f-l">搜索结果页的网址</div></div>
+      <input type="text" id="wzPage" class="mono" value="${esc(S._realSearchPage||'')}" placeholder="https://www.xxx.com/search.php?q=斗破苍穹">
+    </div>
+    <div class="btn-row">
+      <button class="btn pri sm" data-wz="genSearch">自动生成搜索地址</button>
+      <button class="btn gho sm" data-wz="sniff">让工具自己猜</button>
+    </div>
+  </div>
+  <div class="picked ${cur?'':'miss'} mt12"><div class="pk">搜索地址</div><div class="pv">${cur?esc(cur):'还没生成'}</div></div>
+  <div class="note mt12"><span class="ico">🤔</span><div><b>找不到搜索结果页？</b>网站首页顶部一般有个放大镜，点开输入书名回车，页面跳转后的那个网址就是。</div></div>`;
+}
+
+/* ---- 第 2 步 ---- */
+function wiz2(){
+  return `
+  <div class="wiz-t">告诉工具：搜索结果的网页长什么样</div>
+  <div class="wiz-d">点下面的按钮，工具会把搜索结果页原样打开。你只要<b>照着顺序点 4 下</b>，工具自动记下位置。</div>
+  <div class="card">
+    <div class="ol">
+      <li>先点<b>一本书的整块区域</b>（封面+书名+作者都在里面的那一大块）</li>
+      <li>再点<b>书名这几个字</b></li>
+      <li>再点<b>书名或封面</b>（工具会自动取它的链接）</li>
+      <li>最后点<b>作者名</b>（没有就跳过）</li>
+    </div>
+  </div>
+  <div class="card mt12">${targetCards(TGT.search)}</div>
+  <button class="btn pri wide mt12" data-wz="pickSearch">打开网页，开始点 →</button>
+  <div class="note mt12"><span class="ico">👆</span><div>点的时候会有一圈蓝框，说明选中了。<b>点错了没关系</b>，再点一次就行。</div></div>`;
+}
+
+/* ---- 第 3 步 ---- */
+function wiz3(){
+  return `
+  <div class="wiz-t">再告诉工具：书上详情页长什么样</div>
+  <div class="wiz-d">点「打开详情页」，工具会自动找出第一本书点进去。你只要点一下<b>书名</b>、<b>作者</b>、<b>封面</b>，有简介也可以点。</div>
+  <div class="card">${targetCards(TGT.info)}</div>
+  <button class="btn pri wide mt12" data-wz="pickInfo">打开详情页，开始点 →</button>
+  <div class="f mt12">
+    <div class="f-h"><div class="f-l">打不开？手动贴一个详情页网址</div></div>
+    <input type="text" id="wzDetail" class="mono" value="${esc(S._detailUrl||'')}" placeholder="https://www.xxx.com/book/12345/">
+  </div>
+  <div class="note mt12"><span class="ico">💡</span><div>这一步点过了，以后阅读 App 里就能显示封面和简介；不点也能用，只是列表会比较朴素。</div></div>`;
+}
+
+/* ---- 第 4 步 ---- */
+function wiz4(){
+  return `
+  <div class="wiz-t">告诉工具：目录页的章节在哪</div>
+  <div class="wiz-d">点「打开目录页」，然后在页面上<b>随便点一个章节</b>——工具会自动把几百章全部认出来，再点一下章节名就完成了。</div>
+  <div class="card">${targetCards(TGT.toc)}</div>
+  <button class="btn pri wide mt12" data-wz="pickToc">打开目录页，开始点 →</button>
+  <div class="note mt12"><span class="ico">📑</span><div>如果目录很长，点页面里<b>中间位置</b>的章节更容易识别。</div></div>`;
+}
+
+/* ---- 第 5 步 ---- */
+function wiz5(){
+  return `
+  <div class="wiz-t">最后一步：正文在哪</div>
+  <div class="wiz-d">点「打开第一章」，然后在页面中间<b>点一下正文文字</b>。这是最关键的规则，点准了就能正常看书。</div>
+  <div class="card">${targetCards(TGT.content)}</div>
+  <button class="btn pri wide mt12" data-wz="pickContent">打开第一章，开始点 →</button>
+  <div class="note mt12"><span class="ico">📄</span><div>正文区域通常是页面中间很大一块文字，会避开标题和广告。</div></div>`;
+}
+
+/* ---- 第 6 步 ---- */
+function wiz6(){
+  const miss = [];
+  if(!clean(S.bookSourceUrl)) miss.push('网站首页');
+  if(!clean(S.searchUrl)) miss.push('搜索地址');
+  if(!clean(S.ruleSearch.bookList)) miss.push('搜索页点选');
+  if(!clean(S.ruleToc.chapterList)) miss.push('目录点选');
+  if(!clean(S.ruleContent.content)) miss.push('正文点选');
+
+  const ok = miss.length === 0;
+  return `
+  <div class="wiz-t">${ok ? '书源做好了 🎉' : '快好了，还差一点'}</div>
+  <div class="wiz-d">${ok
+    ? '建议先跑一遍测试，确认能搜到书、能出章节能看正文，再去导出。'
+    : '还有这些没填：<b>' + miss.join('、') + '</b>。可以回上一步补，也可以先测着看效果。'}</div>
+  <div class="card">
+    <div class="kv"><div class="k">名称</div><div class="v">${esc(S.bookSourceName||'（未填）')}</div></div>
+    <div class="kv"><div class="k">网站</div><div class="v">${esc(S.bookSourceUrl||'（未填）')}</div></div>
+    <div class="kv"><div class="k">搜索</div><div class="v">${esc(S.searchUrl||'（未填）')}</div></div>
+    <div class="kv"><div class="k">列表</div><div class="v">${esc(S.ruleSearch.bookList||'（未填）')}</div></div>
+    <div class="kv"><div class="k">章节</div><div class="v">${esc(S.ruleToc.chapterList||'（未填）')}</div></div>
+    <div class="kv"><div class="k">正文</div><div class="v">${esc(S.ruleContent.content||'（未填）')}</div></div>
+  </div>
+  <div class="btn-row mt12">
+    <button class="btn ok" style="flex:1" data-wz="goTest">跑一遍测试</button>
+    <button class="btn pri" style="flex:1" data-wz="goExport">导出书源</button>
+  </div>
+  <div class="note mt12"><span class="ico">🧪</span><div>测试会真的联网去搜书、点章节、抓正文，大概 10 秒。</div></div>`;
+}
+
+/* ============================================================
+   Part 9 · 链路取数（向导与测试页共用）
+   ============================================================ */
+async function doSearch(keyword){
+  const url = S._realSearchPage || realSearchUrl(keyword);
+  const pack = await grabDoc(url);
+  const root = pack.doc.documentElement;
+  if(!clean(S.ruleSearch.bookList)) throw new Error('还没点选「书籍列表」，请先完成搜索页那一步');
+  const list = resolveRule(S.ruleSearch.bookList, [root], url).els;
+  if(!list.length) throw new Error('书籍列表没命中任何内容（规则可能需要调整）');
+  const books = list.slice(0, 24).map(el=>({
+    name:   ruleVal(S.ruleSearch.name, el, url),
+    author: ruleVal(S.ruleSearch.author, el, url),
+    url:    ruleVal(S.ruleSearch.bookUrl, el, url),
+    cover:  ruleVal(S.ruleSearch.coverUrl, el, url),
+    intro:  ruleVal(S.ruleSearch.intro, el, url),
+  })).filter(b=> b.name || b.url);
+  T.lastSearchUrl = url;
+  return books;
+}
+
+async function doInfo(bookUrl){
+  const pack = await grabDoc(bookUrl);
+  const root = pack.doc.documentElement;
+  const base = bookUrl;
+  return {
+    name:   ruleVal(S.ruleBookInfo.name, root, base) || '',
+    author: ruleVal(S.ruleBookInfo.author, root, base) || '',
+    cover:  ruleVal(S.ruleBookInfo.coverUrl, root, base) || '',
+    intro:  ruleVal(S.ruleBookInfo.intro, root, base) || '',
+    lastChapter: ruleVal(S.ruleBookInfo.lastChapter, root, base) || '',
+    tocUrl: ruleVal(S.ruleBookInfo.tocUrl, root, base) || '',
+    doc: pack.doc, base
+  };
+}
+
+async function doToc(bookUrl, tocUrl){
+  const url = tocUrl || bookUrl;
+  const pack = await grabDoc(url);
+  const root = pack.doc.documentElement;
+  if(!clean(S.ruleToc.chapterList)) throw new Error('还没点选「章节列表」');
+  const list = resolveRule(S.ruleToc.chapterList, [root], url).els;
+  if(!list.length) throw new Error('章节列表没命中（规则可能需要调整）');
+  return list.map(el=>({
+    name: ruleVal(S.ruleToc.chapterName, el, url),
+    url:  ruleVal(S.ruleToc.chapterUrl, el, url),
+  })).filter(c=> c.url);
+}
+
+async function doContent(chUrl){
+  const pack = await grabDoc(chUrl);
+  const root = pack.doc.documentElement;
+  if(!clean(S.ruleContent.content)) throw new Error('还没点选「正文」');
+  let text = resolveRule(S.ruleContent.content, [root], chUrl).text || '';
+  if(clean(S.ruleContent.replaceRegex)){
+    for(const line of S.ruleContent.replaceRegex.split('\n')){
+      const m = line.split('##');
+      if(m[0]){
+        try{ text = text.replace(new RegExp(m[0], 'g'), m[1]||''); }catch(e){}
+      }
+    }
+  }
+  return text;
+}
+
+/* 取"第一本可用的书"的链接，供向导打开详情页用 */
+async function firstBookUrl(){
+  if(clean(S._detailUrl)) return S._detailUrl;
+  const books = await doSearch(S._kw || '小说');
+  const b = books.find(x=> x.url);
+  if(!b) throw new Error('没搜到书，请先回到上一步点选搜索结果');
+  S._detailUrl = b.url;
+  saveLib();
+  return b.url;
+}
+async function firstChapterUrl(){
+  const b = await firstBookUrl();
+  const info = await doInfo(b);
+  const chapters = await doToc(b, info.tocUrl);
+  if(!chapters.length) throw new Error('目录里没解析出章节');
+  return chapters[0].url;
+}
+
+/* ============================================================
+   Part 10 · 交互绑定
+   ============================================================ */
+let saveTimer = null;
+function saveLibSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveLib, 350); }
+
+function updateHeader(){
+  $('#hName').textContent = clean(S.bookSourceName) || '新书源';
+  const n = doneCount();
+  $('#hSub').textContent = n >= 4 ? '4 项规则齐了，可以导出' : `已完成 ${n} / 4 项`;
+  $('#hDot').classList.toggle('on', n >= 4);
+}
+
+function goTab(name){
+  $$('nav.tabbar button').forEach(b=> b.classList.toggle('on', b.dataset.tab === name));
+  $$('.page').forEach(p=> p.classList.toggle('on', p.dataset.page === name));
+  if(name === 'wizard') renderWizard();
+  if(name === 'rules')  renderRules();
+  if(name === 'test')   renderTest();
+  if(name === 'export') renderExport();
+  window.scrollTo({ top:0, behavior:'instant' });
+}
+
+function showBusy(txt){
+  const box = $('#pickFrame');
+  box.querySelectorAll('iframe,.loading').forEach(n=> n.remove());
+  const ld = document.createElement('div');
+  ld.className = 'loading';
+  ld.innerHTML = '<div class="spin"></div><div>' + esc(txt) + '</div>';
+  box.appendChild(ld);
+  $('#pick').classList.add('on');
+}
+function hideBusy(){ $('#pick').classList.remove('on'); }
+
+/* ---------- 向导动作 ---------- */
+async function handleWz(a){
+  const step = S._step || 0;
+  if(a === 'prev'){ S._step = Math.max(0, step-1); saveLib(); renderWizard(); window.scrollTo(0,0); return; }
+  if(a === 'next') return wzNext();
+  if(a === 'goTest'){ goTab('test'); setTimeout(()=>runAll(), 120); return; }
+  if(a === 'goExport'){ goTab('export'); return; }
+
+  if(a === 'genSearch'){
+    const purl = clean($('#wzPage') && $('#wzPage').value);
+    const kw = clean($('#wzKey') && $('#wzKey').value);
+    S._kw = kw; S._realSearchPage = purl;
+    if(!purl) return toast('先把搜索结果页的网址贴进来');
+    const r = buildSearchUrl(purl, kw);
+    if(!r.ok) return toast('没在网址里找到书名，请在上面填「你刚才搜的书名」再试');
+    setS('searchUrl', r.url); saveLib(); renderWizard();
+    toast('搜索地址已生成 ✓');
+    return;
+  }
+
+  if(a === 'sniff'){
+    if(!clean(S.bookSourceUrl)) return toast('先把网站首页填上');
+    showBusy('正在分析网站…');
+    try{
+      const r = await sniffSearch(S.bookSourceUrl);
+      hideBusy();
+      if(!r) return toast('没自动找到搜索框，请手动搜一次再粘贴网址');
+      setS('searchUrl', r.url); saveLib(); renderWizard();
+      toast('已猜到一个搜索地址，可以微调');
+    }catch(e){ hideBusy(); toast(e.message); }
+    return;
+  }
+
+  if(a === 'pickSearch'){
+    let url = clean(S._realSearchPage);
+    if(!url){
+      if(!clean(S.searchUrl)) return toast('先完成上一步：生成搜索地址');
+      url = realSearchUrl(S._kw || '小说');
+    }
+    openPicker(url, TGT.search, ()=>{ saveLib(); renderWizard(); }, '搜索结果页 · 点选');
+    return;
+  }
+
+  if(a === 'pickInfo'){
+    let u = clean($('#wzDetail') && $('#wzDetail').value) || clean(S._detailUrl);
+    if(!u){
+      showBusy('正在搜索第一本书…');
+      try{ u = await firstBookUrl(); }
+      catch(e){ hideBusy(); return toast(e.message); }
+    }
+    S._detailUrl = u; saveLib();
+    openPicker(u, TGT.info, ()=>{ saveLib(); renderWizard(); }, '详情页 · 点选');
+    return;
+  }
+
+  if(a === 'pickToc'){
+    showBusy('正在打开目录页…');
+    try{
+      const b = clean(S._detailUrl) || await firstBookUrl();
+      let tocUrl = '';
+      if(clean(S.ruleBookInfo.tocUrl)){
+        const info = await doInfo(b).catch(()=>null);
+        if(info) tocUrl = info.tocUrl;
+      }
+      openPicker(tocUrl || b, TGT.toc, ()=>{ saveLib(); renderWizard(); }, '目录页 · 点选');
+    }catch(e){ hideBusy(); toast(e.message); }
+    return;
+  }
+
+  if(a === 'pickContent'){
+    showBusy('正在打开第一章…');
+    try{
+      const u = await firstChapterUrl();
+      openPicker(u, TGT.content, ()=>{ saveLib(); renderWizard(); }, '正文 · 点选');
+    }catch(e){ hideBusy(); toast(e.message); }
+    return;
+  }
+}
+
+function wzNext(){
+  const step = S._step || 0;
+  if(step === 0){
+    let u = clean(S.bookSourceUrl);
+    if(!u) return toast('先把网站首页填上');
+    if(!/^https?:\/\//i.test(u)){ u = 'https://' + u; setS('bookSourceUrl', u); }
+    if(!clean(S.bookSourceName)) setS('bookSourceName', host(u) || '我的书源');
+  }
+  if(step === 1){
+    if(!clean(S.searchUrl)) return toast('先点「自动生成搜索地址」，或者手动填一个');
+  }
+  S._step = Math.min(6, step + 1);
+  saveLib(); renderWizard(); updateHeader(); window.scrollTo(0,0);
+}
+
+/* ---------- 规则页 ---------- */
+let RULE_MOD = 'search';
+
+function renderRules(){
+  const m = SCHEMA[RULE_MOD];
+  const segs = Object.keys(SCHEMA).map(k=>
+    `<button class="${k===RULE_MOD?'on':''}" data-mod="${k}">${SCHEMA[k].label}</button>`).join('');
+
+  const fillCount = m.fields.filter(f=> clean(getS(f.k))).length;
+
+  const html = `
+  <div class="seg" id="modSeg">${segs}</div>
+  <div class="note"><span class="ico">💡</span><div>${esc(m.note)}</div></div>
+  <button class="btn pri wide mt12" data-act="pick" data-mod="${RULE_MOD}">
+    ${m.icon} 打开网页，点一下自动填
+  </button>
+  <div class="card mt12">
+    ${m.fields.map(f=>{
+      const v = getS(f.k);
+      return `<div class="f">
+        <div class="f-h"><div class="f-l">${esc(f.l)}</div>${f.req?'<span class="badge r">必填</span>':''}<div class="sp"></div>
+        ${clean(v)?'<span class="badge g">已填</span>':''}</div>
+        <input type="text" class="mono" data-k="${f.k}" value="${esc(v||'')}" placeholder="${esc(f.ph||'')}">
+        ${f.tip?`<div class="f-tip">${f.tip}</div>`:''}
+      </div>`;
+    }).join('')}
+  </div>
+  <div class="tiny mt8">已填 ${fillCount} / ${m.fields.length} 项 · 这一页是进阶微调，向导里点过的会自动出现在这里</div>
+
+  <details class="mt16"><summary>看不懂？展开语法速查</summary>
+    <div class="card mt8 cheat">
+      <div class="cr"><b>取文字</b><code>@text</code> 就是取元素里的文字</div>
+      <div class="cr"><b>取链接</b><code>@href</code> 取 a 标签的网址</div>
+      <div class="cr"><b>取图片</b><code>@src</code> 取 img 的图片地址</div>
+      <div class="cr"><b>保换行</b><code>@html</code> 保留段落，正文推荐用</div>
+      <div class="cr"><b>按 class</b><code>class.content</code> = 页面上 class="content" 的元素</div>
+      <div class="cr"><b>按 id</b><code>id.list</code> = 页面上 id="list" 的元素</div>
+      <div class="cr"><b>往下钻</b><code>class.list@tag.li</code> 在 list 里找所有 li</div>
+      <div class="cr"><b>第几个</b><code>tag.a.0</code> 第 1 个（从 0 开始）</div>
+      <div class="cr"><b>或</b><code>规则A||规则B</code> A 没取到就用 B</div>
+    </div>
+  </details>
+
+  <div class="sec-h mt16"><b>基础信息</b><div class="ln"></div></div>
+  <div class="card">
+    ${field('bookSourceName','书源名称','例：笔趣阁')}
+    ${field('bookSourceUrl','网站首页','https://www.xxx.com',{type:'url'})}
+    ${field('searchUrl','搜索地址','/search?q={{key}}',{tip:'{{key}} 会被替换成关键词'})}
+    ${field('bookSourceGroup','分组','小说')}
+    ${field('header','请求头','{"User-Agent":"Mozilla/5.0 ..."}',{area:1,adv:1,tip:'遇到 403 时再填，一般留空'})}
+    ${field('bookSourceComment','备注','',{area:1})}
+  </div>
+  <div class="card mt12">
+    ${switchRow('enabled','启用书源','关掉后 App 里就不使用它')}
+    ${switchRow('enabledExplore','参与发现','关掉后不出现在「发现」里')}
+    ${switchRow('enabledCookieJar','保持登录','需要登录才能看的站才开')}
+  </div>`;
+
+  $('#pageRules').innerHTML = html;
+
+  $$('#modSeg button').forEach(b=> b.onclick = ()=>{ RULE_MOD = b.dataset.mod; renderRules(); });
+  $$('[data-act="pick"]').forEach(b=> b.onclick = ()=>{
+    const map = { search:'pickSearch', info:'pickInfo', toc:'pickToc', content:'pickContent' };
+    handleWz(map[b.dataset.mod]);
+  });
+}
+
+/* ============================================================
+   Part 11 · 测试页
+   ============================================================ */
+function tcard(n, title, st, body){
+  const cls = st === 'ok' ? 'done' : st === 'err' ? 'err' : st === 'run' ? 'run' : '';
+  const tag = st === 'ok' ? '<span class="badge g">通过</span>'
+            : st === 'err' ? '<span class="badge" style="color:var(--err);border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.12)">没通过</span>'
+            : st === 'run' ? '<span class="badge y">进行中</span>' : '';
+  return `<div class="tstep">
+    <div class="tstep-h"><div class="tnum ${cls}">${st==='ok'?'✓':st==='err'?'!':n}</div>
+      <div class="tt">${esc(title)}</div>${tag}</div>
+    ${body || ''}
+  </div>`;
+}
+
+function booksHtml(books){
+  if(!books.length) return '<div class="note warn mt8"><span class="ico">⚠️</span><div>规则没匹配到任何书</div></div>';
+  return `<div class="tiny">共 ${books.length} 本，显示前 5 本：</div>
+  <div class="res-list">${books.slice(0,5).map(b=>`
+    <div class="book">
+      ${b.cover?`<img src="${esc(b.cover)}" loading="lazy" onerror="this.style.opacity=.15">`:'<div style="width:44px;height:60px;border-radius:7px;background:var(--card2);flex:none"></div>'}
+      <div class="bi"><div class="bn">${esc(b.name||'（书名没取到）')}</div>
+      <div class="ba">${esc(b.author||'作者未知')}</div>
+      <div class="bm">${esc(trunc(b.url,42))}</div></div>
+    </div>`).join('')}</div>`;
+}
+
+function renderTest(){
+  $('#pageTest').innerHTML = `
+  <div class="wiz-t">跑一遍，看能不能用</div>
+  <div class="wiz-d">工具会真的去这个网站搜一次书、打开目录、再抓一章正文。<b>约 10 秒</b>，全部通过就说明书源可用。</div>
+  <div class="card">
+    <div class="searchbar">
+      <input id="testKw" placeholder="搜什么书？例：斗破苍穹" value="${esc(S._kw||'')}">
+      <button class="btn pri" id="btnRunAll">开始</button>
+    </div>
+    <div class="tiny mt8">建议搜你正在追的书，更好判断效果。</div>
+  </div>
+  <div id="testOut" class="mt12"></div>`;
+  $('#btnRunAll').onclick = ()=> runAll();
+}
+
+function errBox(e, step){
+  const tips = {
+    1:['搜索地址里的关键词没被替换（检查有没有 {{key}}）','网站把搜索结果放在 iframe 或需要登录','搜索地址填成了首页'],
+    2:['详情链接规则取到的是空值','网站对非浏览器访问做了拦截（试试填请求头）'],
+    3:['目录不在详情页，需要单独填「目录页链接」','章节规则只命中了标题栏'],
+    4:['正文用了 @text 丢了换行，试试改成 @html','站点做了分页，正文分了好几页'],
+  }[step] || [];
+  return `<div class="note err mt8"><span class="ico">⚠️</span><div>
+    <b>${esc(e.message||'出错了')}</b>
+    ${tips.length?'<div class="mt8 tiny" style="color:#c9a6a6">可能的原因：</div><ul class="ol" style="color:#c9a6a6;font-size:12px">'+tips.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':''}
+  </div></div>`;
+}
+
+async function runAll(){
+  const out = $('#testOut');
+  const kw = clean($('#testKw').value) || clean(S._kw) || '小说';
+  S._kw = kw; saveLib();
+
+  const ph = (n,t)=> tcard(n,t,'run') + [1,2,3,4].filter(x=>x>n).map(x=>tcard(x,['搜索书籍','打开详情页','抓目录','抓正文'][x-1],'wait')).join('');
+  out.innerHTML = ph(1);
+
+  let books, info, chapters, content;
+
+  try{
+    books = await doSearch(kw);
+    out.innerHTML = tcard(1,'搜索书籍', books.length?'ok':'err', booksHtml(books)) + ph(2);
+    if(!books.length) return;
+  }catch(e){ out.innerHTML = tcard(1,'搜索书籍','err', errBox(e,1)); return; }
+
+  const b = books.find(x=> x.url);
+  if(!b){ out.innerHTML = tcard(1,'搜索书籍','ok',booksHtml(books)) + tcard(2,'打开详情页','err', errBox({message:'拿到书了，但没有详情链接'},2)); return; }
+
+  try{
+    info = await doInfo(b.url);
+    const rows = [
+      ['书名', info.name], ['作者', info.author], ['简介', info.intro ? trunc(info.intro,80) : ''],
+    ].map(([k,v])=>`<div class="kv"><div class="k">${k}</div><div class="v ${v?'':'miss'}">${v?esc(v):'没取到'}</div></div>`).join('');
+    out.innerHTML = tcard(1,'搜索书籍','ok',booksHtml(books))
+      + tcard(2,'打开详情页','ok', rows + `<div class="kv"><div class="k">封面</div><div class="v ${info.cover?'':'miss'}">${info.cover?('<img src="'+esc(info.cover)+'" style="height:54px;border-radius:5px" onerror="this.style.display=\'none\'">'):'没取到（不影响使用）'}</div></div>`)
+      + ph(3);
+  }catch(e){ out.innerHTML = tcard(1,'搜索书籍','ok',booksHtml(books)) + tcard(2,'打开详情页','err', errBox(e,2)); return; }
+
+  try{
+    chapters = await doToc(b.url, info.tocUrl);
+    const list = chapters.slice(0,6).map(c=>`<div class="chap"><div class="cn">${esc(c.name||'（无名）')}</div></div>`).join('');
+    out.innerHTML = tcard(1,'搜索书籍','ok',`<div class="tiny">${books.length} 本</div>`)
+      + tcard(2,'打开详情页','ok',`<div class="tiny">${esc(info.name||b.name)}</div>`)
+      + tcard(3,'抓目录','ok',`<div class="tiny">共 ${chapters.length} 章，前 6 章：</div>${list}`)
+      + ph(4);
+  }catch(e){ out.innerHTML = tcard(1,'搜索书籍','ok',`<div class="tiny">${books.length} 本</div>`)
+      + tcard(2,'打开详情页','ok',`<div class="tiny">${esc(info.name||b.name)}</div>`)
+      + tcard(3,'抓目录','err', errBox(e,3)); return; }
+
+  try{
+    content = await doContent(chapters[0].url);
+    const okLen = clean(content).length > 100;
+    out.innerHTML = tcard(1,'搜索书籍','ok',`<div class="tiny">${books.length} 本</div>`)
+      + tcard(2,'打开详情页','ok',`<div class="tiny">${esc(info.name||b.name)}</div>`)
+      + tcard(3,'抓目录','ok',`<div class="tiny">共 ${chapters.length} 章</div>`)
+      + tcard(4,'抓正文', okLen?'ok':'err',
+          `<div class="kv"><div class="k">章节</div><div class="v">${esc(chapters[0].name||'第一章')}</div></div>
+           <div class="kv"><div class="k">字数</div><div class="v">${clean(content).length} 字</div></div>
+           <div class="mono-box sm mt8">${esc(trunc(content, 320))}</div>
+           ${okLen?'':'<div class="note warn mt8"><span class="ico">⚠️</span><div>抓到的内容太短，正文规则可能没点准</div></div>'}`)
+      + `<div class="note ok mt12"><span class="ico">🎉</span><div><b>全链路通过</b>，可以导出了。</div></div>
+         <div class="btn-row mt12"><button class="btn pri wide" onclick="goTab('export')">去导出书源</button></div>`;
+  }catch(e){
+    out.innerHTML = tcard(1,'搜索书籍','ok',`<div class="tiny">${books.length} 本</div>`)
+      + tcard(2,'打开详情页','ok',`<div class="tiny">${esc(info.name||b.name)}</div>`)
+      + tcard(3,'抓目录','ok',`<div class="tiny">共 ${chapters.length} 章</div>`)
+      + tcard(4,'抓正文','err', errBox(e,4));
+  }
+}
+
+/* ============================================================
+   Part 12 · 导出 / 导入
+   ============================================================ */
+function toLegado(s){
+  const r = (m, keys)=>{
+    const o = {};
+    keys.forEach(k=> o[k] = (m && m[k]) || '');
+    return o;
+  };
+  return {
+    bookSourceComment: s.bookSourceComment || '',
+    bookSourceGroup: s.bookSourceGroup || '',
+    bookSourceName: s.bookSourceName || '未命名书源',
+    bookSourceType: Number(s.bookSourceType) || 0,
+    bookSourceUrl: (s.bookSourceUrl || '').replace(/\/+$/,''),
+    bookUrlPattern: s.bookUrlPattern || '',
+    customOrder: Number(s.customOrder) || 0,
+    enabled: s.enabled !== false,
+    enabledCookieJar: s.enabledCookieJar !== false,
+    enabledExplore: s.enabledExplore !== false,
+    exploreUrl: s.exploreUrl || '',
+    header: s.header || '',
+    lastUpdateTime: Date.now(),
+    respondTime: Number(s.respondTime) || 180000,
+    searchUrl: s.searchUrl || '',
+    weight: Number(s.weight) || 0,
+    ruleSearch: r(s.ruleSearch, ['author','bookList','bookUrl','checkKeyWord','coverUrl','intro','kind','lastChapter','name','wordCount']),
+    ruleBookInfo: r(s.ruleBookInfo, ['author','canReName','coverUrl','intro','kind','lastChapter','name','tocUrl','wordCount']),
+    ruleToc: r(s.ruleToc, ['chapterList','chapterName','chapterUrl','isVolume','nextTocUrl','updateTime']),
+    ruleContent: r(s.ruleContent, ['content','nextContentUrl','replaceRegex','sourceRegex','webJs'])
+  };
+}
+
+function exportJson(collection){
+  const one = toLegado(S);
+  const txt = collection ? JSON.stringify([one], null, 2) : JSON.stringify(one, null, 2);
+  return txt;
+}
+
+function copyText(t){
+  if(navigator.clipboard && window.isSecureContext){
+    return navigator.clipboard.writeText(t);
+  }
+  return new Promise((res, rej)=>{
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); res(); }catch(e){ rej(e); }
+    ta.remove();
+  });
+}
+
+function download(filename, text){
+  const blob = new Blob([text], { type:'application/json;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+
+function renderExport(){
+  const name = clean(S.bookSourceName) || '我的书源';
+  const json = exportJson(false);
+  const miss = [];
+  if(!clean(S.searchUrl)) miss.push('搜索地址');
+  if(!clean(S.ruleSearch.bookList)) miss.push('书籍列表');
+  if(!clean(S.ruleToc.chapterList)) miss.push('章节列表');
+  if(!clean(S.ruleContent.content)) miss.push('正文');
+
+  $('#pageExport').innerHTML = `
+  <div class="wiz-t">导出书源</div>
+  <div class="wiz-d">点「复制」或「下载」，然后按下面的步骤导入到阅读 App 里。</div>
+  ${miss.length?`<div class="note warn"><span class="ico">⚠️</span><div>还差 <b>${miss.join('、')}</b> 没填，导入后可能用不了。建议先回向导补完。</div></div>`:
+    `<div class="note ok"><span class="ico">✅</span><div>规则齐全，可以导出了。</div></div>`}
+
+  <div class="btn-row mt12">
+    <button class="btn pri" style="flex:1" id="btnCopy">复制书源</button>
+    <button class="btn" style="flex:1" id="btnDl">下载 JSON</button>
+  </div>
+
+  <div class="sec-h mt16"><b>预览</b><div class="ln"></div></div>
+  <div class="mono-box">${esc(json)}</div>
+
+  <div class="sec-h mt16"><b>怎么导入到阅读 App</b><div class="ln"></div></div>
+  <div class="card">
+    <div class="ol">
+      <li>打开<b>阅读</b>（Legado），点底部 <b>我的</b> → <b>书源管理</b></li>
+      <li>点右上角 <b>⋮</b> → <b>新建书源</b>，再点右上角 <b>⋮</b> → <b>从剪贴板导入</b></li>
+      <li>刚才复制的就是书源内容，直接导入即可</li>
+      <li>或者用<b>本地导入</b>，选刚下载的 ${esc(name)}.json</li>
+    </ol>
+    <div class="tiny mt8">导进去之后，在书源列表里能看到「${esc(name)}」，搜书就能用了。</div>
+  </div>
+
+  <div class="sec-h mt16"><b>管理</b><div class="ln"></div></div>
+  <div class="card">
+    <div class="btn-row">
+      <button class="btn gho" style="flex:1" id="btnCopyAll">复制全部（${LIB.length} 个）</button>
+      <button class="btn gho" style="flex:1" id="btnDlAll">下载合集</button>
+    </div>
+    <div class="sep"></div>
+    <div class="f">
+      <div class="f-h"><div class="f-l">导入已有书源（粘贴 JSON）</div></div>
+      <textarea id="importTxt" class="mono" rows="3" placeholder='粘贴单个书源 {…} 或合集 [{…},{…}]'></textarea>
+    </div>
+    <button class="btn wide mt8" id="btnDoImport">导入</button>
+  </div>`;
+
+  $('#btnCopy').onclick = ()=> copyText(json).then(()=> toast('已复制，去阅读里「从剪贴板导入」')).catch(()=> toast('复制失败，长按下方预览手动复制'));
+  $('#btnDl').onclick = ()=> download(name + '.json', json);
+  $('#btnCopyAll').onclick = ()=> copyText(JSON.stringify(LIB.map(toLegado), null, 2)).then(()=> toast('已复制合集')).catch(()=> toast('复制失败'));
+  $('#btnDlAll').onclick = ()=> download('书源合集.json', JSON.stringify(LIB.map(toLegado), null, 2));
+  $('#btnDoImport').onclick = ()=> doImport(clean($('#importTxt').value));
+}
+
+function doImport(text){
+  if(!text) return toast('先粘贴书源 JSON');
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ return toast('不是合法的 JSON（首尾可能被截断）'); }
+  const arr = Array.isArray(data) ? data : [data];
+  let n = 0;
+  arr.forEach(o=>{
+    if(!o || typeof o !== 'object' || !o.bookSourceUrl) return;
+    const s = Object.assign(blankSource(), {
+      bookSourceName: o.bookSourceName || '', bookSourceUrl: o.bookSourceUrl || '',
+      bookSourceGroup: o.bookSourceGroup || '', bookSourceComment: o.bookSourceComment || '',
+      bookSourceType: o.bookSourceType || 0, searchUrl: o.searchUrl || '',
+      header: o.header || '', exploreUrl: o.exploreUrl || '', bookUrlPattern: o.bookUrlPattern || '',
+      ruleSearch: Object.assign(blankSource().ruleSearch, o.ruleSearch||{}),
+      ruleBookInfo: Object.assign(blankSource().ruleBookInfo, o.ruleBookInfo||{}),
+      ruleToc: Object.assign(blankSource().ruleToc, o.ruleToc||{}),
+      ruleContent: Object.assign(blankSource().ruleContent, o.ruleContent||{}),
+    });
+    s._step = 6;
+    LIB.push(s); n++;
+  });
+  if(!n) return toast('没识别出书源（缺少 bookSourceUrl）');
+  CUR = LIB.length - 1; S = LIB[CUR];
+  saveLib(); renderLib(); renderWizard(); updateHeader();
+  toast('导入 ' + n + ' 个书源');
+}
+
+/* ============================================================
+   Part 13 · 书源库 / 初始化
+   ============================================================ */
+function renderLib(){
+  const box = $('#libList');
+  box.innerHTML = LIB.map((s,i)=>{
+    const n = (s.ruleSearch && s.ruleSearch.bookList ? 1:0) + (s.ruleToc && s.ruleToc.chapterList ? 1:0) + (s.ruleContent && s.ruleContent.content ? 1:0);
+    return `<div class="libitem ${i===CUR?'on':''}" data-i="${i}">
+      <div class="li"><div class="ln">${esc(s.bookSourceName || '未命名书源')}</div>
+      <div class="ls">${esc(host(s.bookSourceUrl) || '还没填网址')} · ${n}/3 步已配</div></div>
+      ${LIB.length>1?`<button class="x" data-del="${i}">✕</button>`:''}
+    </div>`;
+  }).join('');
+  $$('.libitem', box).forEach(it=>{
+    it.onclick = e=>{
+      if(e.target.dataset.del != null) return;
+      CUR = +it.dataset.i; S = LIB[CUR];
+      saveLib(); renderLib(); renderWizard(); updateHeader();
+      $('#drawer').classList.remove('on'); $('#mask').classList.remove('on');
+    };
+  });
+  $$('[data-del]', box).forEach(b=> b.onclick = e=>{
+    e.stopPropagation();
+    const i = +b.dataset.del;
+    if(!confirm('删除「' + (LIB[i].bookSourceName||'未命名') + '」？')) return;
+    LIB.splice(i,1);
+    CUR = Math.min(CUR, LIB.length-1); S = LIB[CUR];
+    saveLib(); renderLib(); renderWizard(); updateHeader();
+    toast('已删除');
+  });
+}
+
+function newSource(){
+  LIB.push(blankSource());
+  CUR = LIB.length - 1; S = LIB[CUR];
+  saveLib(); renderLib(); renderWizard(); updateHeader();
+  goTab('wizard');
+  toast('新建了一个空书源');
+}
+
+function bindGlobal(){
+  $$('nav.tabbar button').forEach(b=> b.onclick = ()=> goTab(b.dataset.tab));
+
+  $('#btnDrawer').onclick = ()=>{ renderLib(); $('#drawer').classList.add('on'); $('#mask').classList.add('on'); };
+  $('#mask').onclick = ()=>{ $('#drawer').classList.remove('on'); $('#mask').classList.remove('on'); };
+  $('#btnNew').onclick = ()=> newSource();
+  $('#btnAddLib').onclick = ()=>{ $('#drawer').classList.remove('on'); $('#mask').classList.remove('on'); newSource(); };
+  $('#btnSave').onclick = ()=>{ saveLib(); toast('已保存到本机'); updateHeader(); };
+  $('#btnImport').onclick = ()=> $('#fileInput').click();
+
+  $('#fileInput').onchange = async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{ doImport(await f.text()); }catch(err){ toast('读取失败'); }
+    e.target.value = '';
+  };
+
+  // 点选器按钮
+  $('#pickClose').onclick = ()=>{ closePicker(); };
+  $('#pickSkip').onclick = ()=>{ closePicker(); };
+  $('#pickConfirm').onclick = ()=> doPickConfirm();
+
+  // 手动粘贴网页
+  $('#hmClose').onclick = closeHtmlModal;
+  $('#hmOk').onclick = useManualHtml;
+  $('#hmFile').onclick = ()=> $('#hmFileInput').click();
+  $('#hmFileInput').onchange = async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      $('#hmText').value = await f.text();
+      toast('已读取，点下面按钮继续');
+    }catch(err){ toast('读取失败'); }
+    e.target.value = '';
+  };
+
+  // 输入
+  document.addEventListener('input', e=>{
+    const k = e.target.dataset && e.target.dataset.k;
+    if(!k) return;
+    setS(k, e.target.value);
+    if(k === 'bookSourceName') updateHeader();
+    saveLibSoon();
+  });
+  document.addEventListener('change', e=>{
+    const k = e.target.dataset && e.target.dataset.k;
+    if(!k) return;
+    setS(k, e.target.value);
+    saveLibSoon(); updateHeader();
+  });
+  document.addEventListener('click', e=>{
+    const sw = e.target.closest && e.target.closest('[data-sw]');
+    if(sw){
+      const k = sw.dataset.sw;
+      setS(k, !getS(k));
+      sw.classList.toggle('on', !!getS(k));
+      saveLib();
+    }
+    const wz = e.target.closest && e.target.closest('[data-wz]');
+    if(wz) handleWz(wz.dataset.wz);
+  });
+
+  // 页面级函数暴露（供内联 onclick 使用）
+  window.goTab = goTab;
+}
+
+let booted = false;
+function boot(){
+  if(booted) return; booted = true;
+  loadCfg(); loadLib();
+  S = LIB[CUR];
+  if(typeof S._step !== 'number') S._step = 0;
+  bindGlobal();
+  renderLib();
+  updateHeader();
+  renderWizard();
+}
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+</script>
+</body>
+</html>
