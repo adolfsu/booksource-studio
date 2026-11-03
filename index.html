@@ -344,11 +344,13 @@ details[open] summary::before{content:'▾ '}
   <section class="page on" data-page="wizard"><div id="pageWizard"></div></section>
   <section class="page" data-page="rules"><div id="pageRules"></div></section>
   <section class="page" data-page="test"><div id="pageTest"></div></section>
+  <section class="page" data-page="ai"><div id="pageAI"></div></section>
   <section class="page" data-page="export"><div id="pageExport"></div></section>
 </main>
 
 <nav class="tabbar" id="tabbar">
   <button class="on" data-tab="wizard"><span class="ic">🪄</span>向导</button>
+  <button data-tab="ai"><span class="ic">🤖</span>AI制作</button>
   <button data-tab="rules"><span class="ic">🎯</span>规则</button>
   <button data-tab="test"><span class="ic">🔍</span>测试</button>
   <button data-tab="export"><span class="ic">📦</span>导出</button>
@@ -1936,6 +1938,517 @@ async function firstChapterUrl(){
 /* ============================================================
    Part 10 · 交互绑定
    ============================================================ */
+/* ============================================================
+   Part 8 · AI 自动制作（OpenAI 兼容接口）
+   ============================================================ */
+const LS_AI = 'bs_studio_ai_v1';
+let AI = { base:'', key:'', model:'', prefix:'' };
+function loadAI(){ try{ AI = Object.assign(AI, JSON.parse(localStorage.getItem(LS_AI)||'{}')); }catch(e){} }
+function saveAI(){ try{ localStorage.setItem(LS_AI, JSON.stringify(AI)); }catch(e){} }
+
+const AI_STOP_RULES = `你是「阅读」App(Legado) 书源规则专家。你会收到网页 HTML，需要输出 Legado 选择器规则。
+【只允许使用以下语法，不要发明别的写法】
+- CSS 链用 @ 连接：class.类名 / id.名字 / tag.标签名 / text.文本
+- 取值放最后一段：@text 纯文本、@html 内部HTML(含<br>换行)、@href 链接、@src 图片、@content、@value、@title、@alt
+- 索引：段尾加 .数字，如 tag.dd.0 取第1个、tag.dd.-1 取最后1个；class.item.1 取 class=item 的第2个
+- 兜底：用 || 连接多个候选，先命中的生效
+- 页面本质是 JSON 时才用 JSONPath：$.data.list 等形式
+- 严禁：@js:、<js></js>、{{}}、## 正则、CSS 伪类、组合选择器 div.a>p
+规则要尽量短且稳定：优先 id.，其次有辨识度的 class.，避免依赖数字索引（除非同一结构重复出现取第几个）。`;
+
+function slimHtml(html, limit){
+  limit = limit || 42000;
+  let d;
+  try{ d = parseHtml(html, ''); }catch(e){ return String(html||'').slice(0, limit); }
+  try{
+    d.querySelectorAll('script,style,noscript,svg,iframe,link,meta,head,comment').forEach(n=>n.remove());
+  }catch(e){}
+  let out = '';
+  try{
+    out = d.body ? d.body.innerHTML : d.documentElement.innerHTML;
+  }catch(e){ out = String(html||''); }
+  out = out.replace(/<!--[\s\S]*?-->/g,'').replace(/\n\s*\n/g,'\n').replace(/[ \t]{2,}/g,' ');
+  if(out.length > limit) out = out.slice(0, limit) + '\n<!--TRUNCATED-->';
+  return out;
+}
+
+function aiJSON(txt){
+  txt = String(txt||'').replace(/```json/gi,'').replace(/```/g,'').trim();
+  const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+  if(a < 0 || b <= a) throw new Error('AI 没有返回 JSON：' + trunc(txt, 120));
+  return JSON.parse(txt.slice(a, b+1));
+}
+
+/** 拆 Legado 的 url,{json} 写法 */
+function splitLegadoUrl(u){
+  u = String(u||'').trim();
+  const m = u.match(/^(.*?),(\{[\s\S]*\})$/);
+  if(m){
+    try{ return { path:m[1], opt: JSON.parse(m[2]) }; }catch(e){ return { path:u, opt:null }; }
+  }
+  return { path:u, opt:null };
+}
+
+/** 把 searchUrl 变成真实可访问的地址 */
+function aiRealSearchUrl(base, searchUrl, keyword){
+  const sp = splitLegadoUrl(searchUrl);
+  let u = sp.path.split('{{key}}').join(encodeURIComponent(keyword||''))
+              .split('{{page}}').join('1');
+  if(sp.opt && sp.opt.body) sp.opt.body = String(sp.opt.body).split('{{key}}').join(encodeURIComponent(keyword||''));
+  if(!/^https?:/i.test(u)) u = base.replace(/\/+$/,'') + (u.startsWith('/') ? '' : '/') + u;
+  return { url:u, opt:sp.opt, isPost: !!(sp.opt && /^post$/i.test(sp.opt.method||'')) };
+}
+
+async function aiChat(messages, maxTokens){
+  if(!clean(AI.base) || !clean(AI.key)) throw new Error('请先在上方填好 API 地址和 API Key');
+  let url = clean(AI.base).replace(/\/+$/,'') + '/chat/completions';
+  if(!/^https?:/i.test(url)) url = 'https://' + url;
+  if(clean(AI.prefix)){
+    const p = clean(AI.prefix);
+    url = p.includes('{url}') ? p.split('{url}').join(encodeURIComponent(url)) : (p.replace(/\/+$/,'') + '/' + url);
+  }
+  const ctl = new AbortController();
+  const tm = setTimeout(()=>ctl.abort(), 120000);
+  try{
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + AI.key.trim() },
+      body: JSON.stringify({
+        model: clean(AI.model) || 'gpt-4o-mini',
+        messages, temperature:0.2,
+        max_tokens: maxTokens || 2200,
+      }),
+      signal: ctl.signal,
+    });
+    if(!res.ok){
+      const t = await res.text().catch(()=> '');
+      throw new Error('API 返回 ' + res.status + '：' + trunc(t, 180));
+    }
+    const data = await res.json();
+    const txt = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if(!txt) throw new Error('API 返回为空（检查模型名是否正确）');
+    return txt;
+  }catch(e){
+    if(e.name === 'AbortError') throw new Error('请求超时（120 秒）');
+    if(e.name === 'TypeError' || e instanceof TypeError) throw new Error('浏览器无法直连这个 API（多为跨域限制）。解决办法：换支持浏览器调用的中转站；或在「API 请求代理」里填一个支持 POST 转发的代理地址（worker.js 已支持）。');
+    throw e;
+  }finally{ clearTimeout(tm); }
+}
+
+/** 让 AI 生成并本地验证，最多重试 1 次 */
+async function aiGen(buildMsgs, validate){
+  let lastErr = '', lastAns = '';
+  for(let i=0; i<2; i++){
+    if(AISTOP.stop) throw new Error('已停止');
+    const msgs = buildMsgs(lastErr);
+    let raw;
+    try{ raw = await aiChat(msgs); }
+    catch(e){ lastErr = e.message; if(i===0) continue; throw e; }
+    let obj;
+    try{ obj = aiJSON(raw); }
+    catch(e){ lastErr = e.message; lastAns = raw; continue; }
+    lastAns = raw;
+    const v = validate(obj);
+    if(v === true) return obj;
+    lastErr = typeof v === 'string' ? v : '规则校验未通过';
+  }
+  throw new Error('AI 两次都没做对：' + lastErr);
+}
+
+/* ---- AI 运行状态 ---- */
+let AISTOP = { stop:false };
+let AISTEPS = [];
+function aiStep(t, st, detail){
+  const s = AISTEPS.find(x=>x.t === t);
+  if(s){ s.st = st || s.st; if(detail !== undefined) s.detail = detail; }
+  return s;
+}
+
+function renderAI(){
+  const running = AISTEPS.length && AISTEPS.some(s=>s.st === 'run');
+  const cards = AISTEPS.map((s,i)=>{
+    const st = s.st || 'wait';
+    return tcard(i+1, s.t, st, s.detail || (st==='run' ? '<div class="tiny">进行中…</div>' : ''));
+  }).join('');
+
+  $('#pageAI').innerHTML = `
+  <div class="wiz-t">AI 替你做书源</div>
+  <div class="wiz-d">填一次 API（支持 OpenAI 兼容接口：官方、中转站、DeepSeek、Kimi 等都行），之后<b>每换一个网站只需贴网址</b>，AI 自己分析网页、写规则、做好验证。</div>
+
+  <div class="card">
+    <details ${AI.base ? '' : 'open'}>
+      <summary><b>⚙️ API 设置</b>（填一次就存本机，不用重复填）</summary>
+      <div class="f mt8">
+        <div class="f-h"><div class="f-l">API 地址</div></div>
+        <input type="text" id="aiBase" class="mono" placeholder="https://api.openai.com/v1 或中转站地址" value="${esc(AI.base||'')}">
+        <div class="f-tip">OpenAI 兼容即可，一般以 <code>/v1</code> 结尾。中转站、DeepSeek、Kimi、通义等都行。</div>
+      </div>
+      <div class="f">
+        <div class="f-h"><div class="f-l">API Key</div></div>
+        <input type="password" id="aiKey" placeholder="sk-…" value="${esc(AI.key||'')}">
+        <div class="f-tip">只保存在你手机本地（localStorage），不会上传到任何服务器。</div>
+      </div>
+      <div class="f">
+        <div class="f-h"><div class="f-l">模型名</div></div>
+        <input type="text" id="aiModel" class="mono" placeholder="gpt-4o-mini / deepseek-chat / glm-4-flash …" value="${esc(AI.model||'')}">
+        <div class="f-tip">便宜快速的模型就够用（做 1 个书源约 4-6 次对话）。</div>
+      </div>
+      <div class="f">
+        <div class="f-h"><div class="f-l">API 请求代理（可选）</div></div>
+        <input type="text" id="aiPrefix" class="mono" placeholder="https://xxx.workers.dev/?url=" value="${esc(AI.prefix||'')}">
+        <div class="f-tip">只有当提示「浏览器无法直连」时才需要。可用仓库里的 <b>worker.js</b> 部署一个（已支持 POST 转发），也支持 <code>{url}</code> 占位符写法。</div>
+      </div>
+      <button class="btn gho sm" id="aiTestConn">测试连接</button>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="f">
+      <div class="f-h"><div class="f-l">小说站首页网址</div><span class="badge r">必填</span></div>
+      <input type="url" id="aiUrl" class="mono" placeholder="https://www.xxx.com" value="${esc(AISTOP.url||'')}">
+    </div>
+    <div class="f">
+      <div class="f-h"><div class="f-l">测试搜的书名</div></div>
+      <input type="text" id="aiKw" placeholder="用来让 AI 看到真实搜索结果，越常见越好" value="${esc(AISTOP.kw||'斗破苍穹')}">
+    </div>
+    <div class="row" style="border:0;padding-top:2px">
+      <div class="rl">顺便做「发现」分类<div class="rd">AI 从首页认出分类，能在 App 里逛书库</div></div>
+      <button class="sw ${AISTOP.explore === false ? '' : 'on'}" id="aiExpSw"></button>
+    </div>
+    <div class="btn-row mt12">
+      ${running
+        ? `<button class="btn warn" style="flex:1" id="aiStop">■ 停止</button>`
+        : `<button class="btn pri" style="flex:1" id="aiGo">🤖 开始自动制作</button>`}
+    </div>
+    <div class="tiny mt8">全程约 1-2 分钟：AI 会看首页 → 试搜一次书 → 看详情页 → 看目录 → 看正文，每一步都会在本机验证规则是否真的抓得到。</div>
+  </div>
+
+  ${AISTEPS.length ? `<div id="aiOut">${cards}</div>` : ''}
+  <div id="aiDone"></div>`;
+
+  // 绑定
+  $('#aiBase').oninput = e=>{ AI.base = e.target.value.trim(); saveAI(); };
+  $('#aiKey').oninput  = e=>{ AI.key  = e.target.value.trim(); saveAI(); };
+  $('#aiModel').oninput= e=>{ AI.model= e.target.value.trim(); saveAI(); };
+  $('#aiPrefix').oninput=e=>{ AI.prefix=e.target.value.trim(); saveAI(); };
+  $('#aiTestConn').onclick = aiTestConn;
+  $('#aiExpSw').onclick = e=>{ AISTOP.explore = AISTOP.explore === false ? true : false; e.target.classList.toggle('on', AISTOP.explore !== false); };
+  if($('#aiGo')) $('#aiGo').onclick = ()=> aiBuild();
+  if($('#aiStop')) $('#aiStop').onclick = ()=>{ AISTOP.stop = true; toast('正在停止…（当前这一步完成后停下）'); };
+}
+
+async function aiTestConn(){
+  if(!clean(AI.base) || !clean(AI.key)) return toast('先填 API 地址和 Key');
+  const btn = $('#aiTestConn');
+  btn.disabled = true; btn.textContent = '测试中…';
+  try{
+    let url = clean(AI.base).replace(/\/+$/,'') + '/models';
+    if(!/^https?:/i.test(url)) url = 'https://' + url;
+    if(clean(AI.prefix)){
+      const p = clean(AI.prefix);
+      url = p.includes('{url}') ? p.split('{url}').join(encodeURIComponent(url)) : (p.replace(/\/+$/,'') + '/' + url);
+    }
+    const res = await fetch(url, { headers:{ 'Authorization':'Bearer ' + AI.key.trim() } });
+    if(res.ok){
+      let n = '';
+      try{ const d = await res.json(); n = Array.isArray(d.data) ? ('，共 ' + d.data.length + ' 个模型') : ''; }catch(e){}
+      toast('连接成功' + n);
+    }else toast('API 返回 ' + res.status + '（Key 或地址可能不对）');
+  }catch(e){
+    toast(e instanceof TypeError ? '连不上：多为跨域限制，需要填「API 请求代理」' : e.message);
+  }
+  btn.disabled = false; btn.textContent = '测试连接';
+}
+
+/* ---- 主流程 ---- */
+async function aiBuild(){
+  const homeUrl = clean($('#aiUrl') && $('#aiUrl').value);
+  const kw = clean($('#aiKw') && $('#aiKw').value) || '斗破苍穹';
+  const wantExplore = AISTOP.explore !== false;
+  if(!homeUrl) return toast('先填小说站首页网址');
+  if(!clean(AI.base) || !clean(AI.key)) return toast('先在 API 设置里填好地址和 Key');
+
+  AISTOP = { stop:false, url:homeUrl, kw, explore:wantExplore };
+  AISTEPS = [
+    { t:'分析网站首页', st:'run' },
+    { t:'生成搜索规则', st:'wait' },
+    { t:'生成详情和目录规则', st:'wait' },
+    { t:'生成正文规则', st:'wait' },
+    { t:'生成分类（发现）', st:'wait' },
+  ];
+  if(!wantExplore) AISTEPS[4].st = 'skip';
+  renderAI();
+
+  const paint = ()=>{ const out = $('#aiOut'); if(out) out.innerHTML = AISTEPS.map((s,i)=>tcard(i+1, s.t, s.st, s.detail||'')).join(''); };
+  const setp = (t, st, detail)=>{ aiStep(t, st, detail); paint(); };
+
+  try{
+    /* 1. 首页 → 搜索地址 */
+    const home = await grabDoc(homeUrl);
+    const homeHtml = slimHtml(home.html);
+    const site = await aiGen(
+      (err)=>[
+        { role:'system', content: AI_STOP_RULES },
+        { role:'user', content:
+          `这是小说网站首页的 HTML（可能已截断）。请找出它的搜索地址。\n` +
+          `要求：\n` +
+          `1. 看页面里的 <form>：如果搜索是 GET（关键词会出现在网址里），输出形如 /search.php?keyword={{key}} 的路径，关键词位置用 {{key}} 代替。\n` +
+          `2. 如果表单 method 是 POST（搜什么书网址都不变），输出 Legado 格式：/s.php,{"method":"POST","body":"searchkey={{key}}&submit=搜索"}，参数名用表单里文本输入框的 name，保留所有 hidden 输入框；body 里的中文值先 URL 编码不必要，保持原样即可。\n` +
+          `3. 页面编码是 gb2312/gbk 时在 JSON 里加 "charset":"gbk"。\n` +
+          `4. 顺便给出站点名。\n` +
+          `只输出 JSON：{"name":"站点名","searchUrl":"…","charset":"utf-8"}。找不到搜索入口就 searchUrl 填 ""。` +
+          (err ? '\n\n上一次输出有问题：' + err + '，请重新输出。' : '') +
+          `\n\nHTML：\n${homeHtml}` }
+      ],
+      (o)=>{
+        if(!o || typeof o !== 'object') return '不是合法 JSON 对象';
+        return true;   // searchUrl 为空也算成功，后面单独处理
+      }
+    ) || {};
+
+    const srcName = clean(site.name) || host(homeUrl).replace(/^www\./,'');
+    if(site.searchUrl){
+      S.bookSourceName = srcName;
+      S.bookSourceUrl = homeUrl;
+      let su = site.searchUrl;
+      if(site.charset && !/utf-?8/i.test(site.charset) && !/charset/.test(su)) su += ',{"charset":"' + site.charset + '"}';
+      // 若 AI 已带 ,{json} 而我们又加了 charset，避免双后缀
+      const sp = splitLegadoUrl(su);
+      if(sp.opt){
+        const merged = Object.assign({}, sp.opt);
+        if(site.charset && !/utf-?8/i.test(site.charset) && !merged.charset) merged.charset = site.charset;
+        su = sp.path + ',' + JSON.stringify(merged);
+      }
+      S.searchUrl = su;
+    }else{
+      S.bookSourceName = srcName;
+      S.bookSourceUrl = homeUrl;
+    }
+    saveLib(); updateHeader();
+
+    if(!site.searchUrl){
+      setp('分析网站首页', 'warn', `<div class="tiny">AI 没能在首页找到搜索入口。书源名称和首页已填好，搜索部分请回向导手动点选完成。</div>`);
+      finishAI('AI 只完成了基础信息，搜索规则需要用向导手动做。');
+      return;
+    }
+
+    const rs = aiRealSearchUrl(homeUrl, S.searchUrl, kw);
+    setp('分析网站首页', 'ok', `<div class="kv"><div class="k">站点</div><div class="v">${esc(S.bookSourceName)}</div></div><div class="kv"><div class="k">搜索</div><div class="v">${esc(S.searchUrl)}</div></div>`);
+
+    /* 2. 搜索结果页 → ruleSearch */
+    if(rs.isPost){
+      setp('生成搜索规则', 'warn',
+        `<div class="note warn mt8"><span class="ico">ℹ️</span><div>这是 <b>POST 搜索</b>站，浏览器里没法预演搜索结果页，AI 只写好了搜索地址。搜索规则请在向导里<b>手动点选一次</b>（电脑浏览器搜一次书 → 手动粘贴网页），或在 App 里直接验证。</div></div>`);
+    }else{
+      setp('生成搜索规则', 'run');
+      let searchPack = null;
+      try{ searchPack = await grabDoc(rs.url); }
+      catch(e){ setp('生成搜索规则', 'err', `<div class="tiny">搜索结果页打不开：${esc(e.message)}</div>`); throw e; }
+      const sh = slimHtml(searchPack.html);
+      const rules = await aiGen(
+        (err)=>[
+          { role:'system', content: AI_STOP_RULES },
+          { role:'user', content:
+            `这是小说站「${esc(srcName)}」搜索“${esc(kw)}”的结果页 HTML。请生成书源搜索规则。\n` +
+            `书籍列表 = 包含每一本书完整信息（封面/书名/作者等）的、在页面上重复出现的最小元素。\n` +
+            `name/bookUrl 的规则是相对「一本书的元素」的，不要再写 bookList 的路径。\n` +
+            `bookUrl 取详情页链接（通常是书名或封面所在 <a> 的 @href）。封面图注意常见懒加载属性 data-src / data-original 优先于 src。\n` +
+            `author/coverUrl/intro 找不到就填 ""。\n` +
+            (err ? `上一次输出的问题：${err}，请修正。\n` : '') +
+            `只输出 JSON：{"bookList":"…","name":"…","bookUrl":"…","author":"","coverUrl":"","intro":""}\n\nHTML：\n${sh}` }
+        ],
+        (o)=>{
+          const need = ['bookList','name','bookUrl'];
+          for(const k of need){ if(!clean(o[k])) return '缺少 ' + k; }
+          const root = searchPack.doc.documentElement;
+          const list = resolveRule(o.bookList, [root], searchPack.base).els;
+          if(list.length < 1) return 'bookList 在页面上没命中任何元素：' + o.bookList;
+          const first = list.find(el=> resolveRule(o.name, [el], searchPack.base).els.length && clean(resolveRule(o.name,[el],searchPack.base).text));
+          if(!first) return '用 name 规则在列表项里取不到书名：' + o.name;
+          const bu = clean(resolveRule(o.bookUrl, [first], searchPack.base).text);
+          if(!bu) return '用 bookUrl 规则取不到链接：' + o.bookUrl;
+          S._aiFirstBook = absUrl(bu, searchPack.base);
+          return true;
+        }
+      );
+      S.ruleSearch.bookList = rules.bookList;
+      S.ruleSearch.name = rules.name;
+      S.ruleSearch.bookUrl = rules.bookUrl;
+      S.ruleSearch.author = rules.author || '';
+      S.ruleSearch.coverUrl = rules.coverUrl || '';
+      S.ruleSearch.intro = rules.intro || '';
+      const nBooks = resolveRule(rules.bookList, [searchPack.doc.documentElement], searchPack.base).els.length;
+      setp('生成搜索规则', 'ok', `<div class="kv"><div class="k">书单</div><div class="v">${esc(rules.bookList)}（命中 ${nBooks} 本）</div></div><div class="kv"><div class="k">书名</div><div class="v">${esc(rules.name)}</div></div>`);
+      saveLib();
+    }
+
+    /* 3. 详情页 + 目录 */
+    setp('生成详情和目录规则', 'run');
+    let detailUrl = clean(S._aiFirstBook);
+    if(!detailUrl){
+      // POST 搜索等拿不到书的情况：让 AI 从首页猜一本热门书的详情页链接
+      const guess = await aiGen(
+        (err)=>[
+          { role:'system', content: AI_STOP_RULES },
+          { role:'user', content:
+            `这是小说站首页 HTML。找出任意一本小说详情页的完整链接（首页推荐位、排行榜里都有）。` +
+            (err ? '上一次输出有问题：' + err + '。' : '') +
+            `只输出 JSON：{"bookUrl":"https://…"}` +
+            `\n\nHTML：\n${homeHtml}` }
+        ],
+        (o)=> /^https?:\/\/./.test(o.bookUrl||'') ? true : 'bookUrl 不是完整网址'
+      );
+      detailUrl = guess.bookUrl;
+    }
+    const infoPack = await grabDoc(detailUrl);
+    const ih = slimHtml(infoPack.html);
+    const dRules = await aiGen(
+      (err)=>[
+        { role:'system', content: AI_STOP_RULES },
+        { role:'user', content:
+          `这是小说站一本书的详情页 HTML。请生成详情规则和目录规则。\n` +
+          `1. name/author/coverUrl/intro：详情页上的书名、作者、封面图、简介（找不到填 ""）。\n` +
+          `2. tocUrl：仅当章节列表在另一个单独页面时才填（多数站详情页本身就是目录页，填 ""）。\n` +
+          `3. chapterList：包含每个章节条目的、重复出现的最小元素（如 tag.dd、class.item 的 li）。注意区分正序目录和倒序目录都不用管，只给列表规则。\n` +
+          `4. chapterName / chapterUrl：相对章节条目的规则，一般是 tag.a@text 和 tag.a@href。\n` +
+          (err ? `上一次输出的问题：${err}，请修正。\n` : '') +
+          `只输出 JSON：{"name":"","author":"","coverUrl":"","intro":"","tocUrl":"","chapterList":"","chapterName":"","chapterUrl":""}\n\nHTML：\n${ih}` }
+      ],
+      (o)=>{
+        if(!clean(o.chapterList)) return '缺少 chapterList';
+        if(!clean(o.chapterName) || !clean(o.chapterUrl)) return '缺少 chapterName/chapterUrl';
+        const root = infoPack.doc.documentElement;
+        const list = resolveRule(o.chapterList, [root], infoPack.base).els;
+        if(list.length < 3) return 'chapterList 命中太少（' + list.length + ' 个），可能选错元素';
+        const c0 = list[0];
+        const cn = clean(resolveRule(o.chapterName, [c0], infoPack.base).text);
+        const cu = clean(resolveRule(o.chapterUrl, [c0], infoPack.base).text);
+        if(!cn) return 'chapterName 取不到文字：' + o.chapterName;
+        if(!cu) return 'chapterUrl 取不到链接：' + o.chapterUrl;
+        S._aiFirstChapter = absUrl(cu, infoPack.base);
+        return true;
+      }
+    );
+    S.ruleBookInfo.name = dRules.name || '';
+    S.ruleBookInfo.author = dRules.author || '';
+    S.ruleBookInfo.coverUrl = dRules.coverUrl || '';
+    S.ruleBookInfo.intro = dRules.intro || '';
+    S.ruleBookInfo.tocUrl = dRules.tocUrl || '';
+    S.ruleToc.chapterList = dRules.chapterList;
+    S.ruleToc.chapterName = dRules.chapterName;
+    S.ruleToc.chapterUrl = dRules.chapterUrl;
+    const nCh = resolveRule(dRules.chapterList, [infoPack.doc.documentElement], infoPack.base).els.length;
+    setp('生成详情和目录规则', 'ok', `<div class="kv"><div class="k">目录</div><div class="v">${esc(dRules.chapterList)}（命中 ${nCh} 章）</div></div>`);
+    saveLib();
+
+    /* 4. 正文 */
+    setp('生成正文规则', 'run');
+    const chUrl = clean(S._aiFirstChapter);
+    const chPack = await grabDoc(chUrl);
+    const ch = slimHtml(chPack.html);
+    const cRules = await aiGen(
+      (err)=>[
+        { role:'system', content: AI_STOP_RULES },
+        { role:'user', content:
+          `这是小说站一章正文的页面 HTML。请生成正文规则。\n` +
+          `1. content：包住整章文字的容器，用 @html 取值保住换行（一般是 id.xxx@html 或 class.xxx@html）。要选文字最多的那个正文容器，不要选包含整页的（body、wrapper 之类不行）。\n` +
+          `2. nextContentUrl：仅当这一章正文被分成多页、页面里有"下一页"链接时才填，否则 ""。\n` +
+          (err ? `上一次输出的问题：${err}，请修正。\n` : '') +
+          `只输出 JSON：{"content":"","nextContentUrl":""}\n\nHTML：\n${ch}` }
+      ],
+      (o)=>{
+        if(!clean(o.content)) return '缺少 content';
+        const root = chPack.doc.documentElement;
+        const txt = clean(resolveRule(o.content, [root], chPack.base).text || '');
+        if(txt.length < 100) return 'content 取到的正文太短（' + txt.length + ' 字），可能选错容器';
+        return true;
+      }
+    );
+    S.ruleContent.content = cRules.content;
+    S.ruleContent.nextContentUrl = cRules.nextContentUrl || '';
+    const cTxt = clean(resolveRule(cRules.content, [chPack.doc.documentElement], chPack.base).text || '');
+    setp('生成正文规则', 'ok', `<div class="kv"><div class="k">正文</div><div class="v">${esc(cRules.content)}（本章 ${cTxt.length} 字）</div></div>`);
+    saveLib();
+
+    /* 5. 分类（发现） */
+    if(wantExplore){
+      setp('生成分类（发现）', 'run');
+      try{
+        const cats = await aiGen(
+          (err)=>[
+            { role:'system', content: AI_STOP_RULES },
+            { role:'user', content:
+              `这是小说站首页 HTML。找出导航里的小说分类入口（玄幻、都市、修仙、排行榜、完本这类），最多 15 个。\n` +
+              `要求：只要站内链接（忽略首页/登录/APP下载/外站）；网址是相对路径就给相对路径；如果分类网址带页码，把页码换成 {{page}}（如 /sort/1/{{page}}.html 或 /sort/{{page}}/），第一页通常是 1。\n` +
+              (err ? `上一次输出的问题：${err}，请修正。\n` : '') +
+              `只输出 JSON：{"categories":[{"name":"玄幻","url":"/sort/1/"}]}\n\nHTML：\n${homeHtml}` }
+          ],
+          (o)=> Array.isArray(o.categories) && o.categories.length ? true : 'categories 为空'
+        );
+        const items = cats.categories
+          .filter(c=> clean(c.name) && clean(c.url))
+          .slice(0, 15)
+          .map(c=> ({ name: clean(c.name).slice(0,10), url: clean(c.url) }));
+        // 分类页的书，多数站和搜索结果同构：先复用搜索规则，抽第一个分类验证
+        S._cats = items;
+        S.exploreUrl = buildExploreUrl(items);
+        if(clean(S.ruleSearch.bookList)){
+          S.ruleExplore.bookList = S.ruleSearch.bookList;
+          S.ruleExplore.name = S.ruleSearch.name;
+          S.ruleExplore.bookUrl = S.ruleSearch.bookUrl;
+          S.ruleExplore.author = S.ruleSearch.author;
+          S.ruleExplore.coverUrl = S.ruleSearch.coverUrl;
+          try{
+            const e0 = explorePageUrl(items[0].url, 1);
+            const ep = await grabDoc(e0);
+            const n = resolveRule(S.ruleExplore.bookList, [ep.doc.documentElement], ep.base).els.length;
+            setp('生成分类（发现）', n > 0 ? 'ok' : 'warn',
+              `<div class="kv"><div class="k">分类</div><div class="v">${items.length} 个：${esc(items.slice(0,6).map(c=>c.name).join('、'))}${items.length>6?'…':''}</div></div>` +
+              (n > 0 ? `<div class="tiny">分类页抽查：命中 ${n} 本书</div>` : `<div class="tiny">分类页结构和搜索页不同，规则可能要在分类页重新点选（向导第 7 步）</div>`));
+          }catch(e){
+            setp('生成分类（发现）', 'warn', `<div class="tiny">${items.length} 个分类已写入，但分类页没能打开验证：${esc(e.message)}</div>`);
+          }
+        }else{
+          setp('生成分类（发现）', 'ok', `<div class="kv"><div class="k">分类</div><div class="v">${items.length} 个已写入</div></div><div class="tiny">搜索规则为空（POST 站），分类页规则需在向导第 7 步点选</div>`);
+        }
+        saveLib();
+      }catch(e){
+        setp('生成分类（发现）', 'warn', `<div class="tiny">跳过：${esc(e.message)}</div>`);
+      }
+    }
+
+    finishAI(null);
+  }catch(e){
+    const cur = AISTEPS.find(s=>s.st === 'run');
+    if(cur && cur.st === 'run') setp(cur.t, 'err', `<div class="note err mt8"><span class="ico">⚠️</span><div>${esc(e.message)}</div></div>`);
+    finishAI(e.message);
+  }
+}
+
+function finishAI(errMsg){
+  const core = coreCount();
+  S._step = 7;
+  saveLib(); updateHeader();
+  const done = $('#aiDone');
+  if(!done) return;
+  if(errMsg){
+    done.innerHTML = `<div class="note warn mt12"><span class="ico">⚠️</span><div><b>中途停下</b>：${esc(errMsg)}<br>已生成的部分都保存了，可以补跑，或回向导手动点选。</div></div>
+    <div class="btn-row mt12"><button class="btn" style="flex:1" onclick="goTab('wizard')">去向导补</button></div>`;
+  }else if(core >= 4){
+    done.innerHTML = `<div class="note ok mt12"><span class="ico">🎉</span><div><b>AI 做完了</b>，规则都已写入并逐条验证过。建议跑一遍全链路测试再导出。</div></div>
+    <div class="btn-row mt12">
+      <button class="btn pri" style="flex:1" onclick="goTab('test')">去测试</button>
+      <button class="btn ok" style="flex:1" onclick="goTab('export')">去导出</button>
+    </div>`;
+  }else{
+    done.innerHTML = `<div class="note mt12"><span class="ico">ℹ️</span><div>AI 完成了它能做的部分（还差 ${4-core} 项核心规则，多为 POST 搜索站）。回向导手动点选补齐即可。</div></div>
+    <div class="btn-row mt12"><button class="btn pri" style="flex:1" onclick="goTab('wizard')">去向导</button></div>`;
+  }
+  AISTEPS.forEach(s=>{ if(s.st === 'run') s.st = 'warn'; });
+  paint();
+  function paint(){ const out = $('#aiOut'); if(out) out.innerHTML = AISTEPS.map((s,i)=>tcard(i+1, s.t, s.st, s.detail||'')).join(''); }
+}
+
 let saveTimer = null;
 function saveLibSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveLib, 350); }
 
@@ -1954,6 +2467,7 @@ function goTab(name){
   if(name === 'wizard') renderWizard();
   if(name === 'rules')  renderRules();
   if(name === 'test')   renderTest();
+  if(name === 'ai')     renderAI();
   if(name === 'export') renderExport();
   window.scrollTo({ top:0, behavior:'instant' });
 }
@@ -2603,7 +3117,7 @@ function bindGlobal(){
 let booted = false;
 function boot(){
   if(booted) return; booted = true;
-  loadCfg(); loadLib();
+  loadCfg(); loadLib(); loadAI();
   S = LIB[CUR];
   if(typeof S._step !== 'number') S._step = 0;
   bindGlobal();
