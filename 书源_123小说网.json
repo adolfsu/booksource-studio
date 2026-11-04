@@ -1,6 +1,6 @@
 [
   {
-    "bookSourceComment": "123小说网（www.bz111111111.com）· 2026-11-04 制作\nPOST 搜索（GBK 编码），支持搜索翻页与分类翻页。\n注意：正文部分文字被站点替换为字符图片（约 2-3%），已在规则中剔除；\n如需保留完整（以小图片显示缺字），把 ruleContent.content 末尾的 ##<img[^>]*>## 删掉即可。",
+    "bookSourceComment": "123小说网（www.bz111111111.com）· 2026-11-04 制作\nPOST 搜索（GBK 编码），支持搜索翻页与分类翻页。\n发现页含 7 个分类 + 5 种排序榜（最后更新/总人气/月人气/字数/新书）+ 完本/连载。\n注意：正文部分文字被站点替换为字符图片（约 2-3%），已在规则中剔除；\n如需保留完整（以小图片显示缺字），把 ruleContent.replaceRegex 里的 ##<img[^>]*>## 删掉即可。",
     "bookSourceGroup": "网络小说",
     "bookSourceName": "123小说网",
     "bookSourceType": 0,
@@ -10,7 +10,7 @@
     "enabled": true,
     "enabledCookieJar": true,
     "enabledExplore": true,
-    "exploreUrl": "玄幻::/fenlei/1_{{page}}.html\n仙侠::/fenlei/2_{{page}}.html\n都市::/fenlei/3_{{page}}.html\n穿越::/fenlei/4_{{page}}.html\n科幻::/fenlei/5_{{page}}.html\n藏经阁::/fenlei/6_{{page}}.html\n其他::/fenlei/7_{{page}}.html\n完本::/shuku/0-lastupdate-2-{{page}}.html\n排行::/shuku/0-allvisit-2-{{page}}.html",
+    "exploreUrl": "玄幻::/fenlei/1_{{page}}.html\n仙侠::/fenlei/2_{{page}}.html\n都市::/fenlei/3_{{page}}.html\n穿越::/fenlei/4_{{page}}.html\n科幻::/fenlei/5_{{page}}.html\n藏经阁::/fenlei/6_{{page}}.html\n其他::/fenlei/7_{{page}}.html\n最后更新::/shuku/0-lastupdate-0-{{page}}.html\n总人气榜::/shuku/0-allvisit-0-{{page}}.html\n月人气榜::/shuku/0-monthvisit-0-{{page}}.html\n字数榜::/shuku/0-size-0-{{page}}.html\n新书榜::/shuku/0-postdate-0-{{page}}.html\n完本::/shuku/0-lastupdate-2-{{page}}.html\n连载中::/shuku/0-lastupdate-1-{{page}}.html",
     "header": "{\"User-Agent\":\"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36\"}",
     "lastUpdateTime": 1791150000000,
     "respondTime": 180000,
