@@ -24,6 +24,7 @@
     },
     "ruleContent": {
       "content": "class.page-content@html",
+      "imageStyle": "TEXT",
       "nextContentUrl": "",
       "replaceRegex": "##<img[^>]*>##"
     },
