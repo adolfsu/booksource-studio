@@ -179,7 +179,7 @@ t('导出 JSON 不会被 AI 中间字段污染', ()=>{
   });
 
   // ---- 新增：aiUrlOf / aiFetchModels / aiTestConn ----
-  w.renderAI(); // 重建 DOM（含 datalist 与两个按钮）
+  w.renderAI(); // 重建 DOM（含自绘下拉容器与两个按钮）
   t('aiUrlOf：三种拼法', ()=>{
     w.eval("AI.base='https://a.com/v1';AI.prefix='';");
     eq(w.aiUrlOf('/models'), 'https://a.com/v1/models');
@@ -187,6 +187,44 @@ t('导出 JSON 不会被 AI 中间字段污染', ()=>{
     eq(w.aiUrlOf('/models'), 'https://p.workers.dev/?url=' + encodeURIComponent('https://a.com/v1/models'));
     w.eval("AI.prefix='https://p2.workers.dev/api/{url}';");
     eq(w.aiUrlOf('/models'), 'https://p2.workers.dev/api/' + encodeURIComponent('https://a.com/v1/models'));
+  });
+
+  t('bindModelDrop：点击输入框弹出全部模型，点选回填并关闭', ()=>{
+    w.eval("AI.base='https://a.com/v1';AI.models=['glm-4-flash','gpt-4o-mini','z-model'];AI.model='';");
+    w.renderAI();
+    const inp = d.querySelector('#aiModel'), drop = d.querySelector('#aiModelDrop');
+    if(drop.style.display !== 'none') throw new Error('初始应隐藏');
+    inp.dispatchEvent(new w.Event('focus'));
+    if(drop.style.display !== 'block') throw new Error('聚焦未弹出');
+    const items = drop.querySelectorAll('.mdrop-it');
+    if(items.length !== 3) throw new Error('应显示 3 个模型，实际 ' + items.length);
+    // 推荐的排前面
+    if(items[0].dataset.m !== 'glm-4-flash') throw new Error('推荐模型未置顶: ' + items[0].dataset.m);
+    items[1].click();
+    if(w.eval('AI.model') !== 'gpt-4o-mini') throw new Error('点选未回填');
+    if(inp.value !== 'gpt-4o-mini') throw new Error('输入框未回填');
+    if(drop.style.display !== 'none') throw new Error('点选后未关闭');
+  });
+  t('bindModelDrop：筛选生效；无列表时不弹出', ()=>{
+    const inp = d.querySelector('#aiModel'), drop = d.querySelector('#aiModelDrop');
+    inp.dispatchEvent(new w.Event('focus'));
+    const kwInp = d.querySelector('#aiMdlKw');
+    kwInp.value = 'gpt'; kwInp.oninput({ target:{ value:'gpt' } });
+    const items = drop.querySelectorAll('.mdrop-it');
+    if(items.length !== 1 || items[0].dataset.m !== 'gpt-4o-mini') throw new Error('筛选结果错误');
+    w.eval("AI.models=[];");
+    inp.dispatchEvent(new w.Event('focus'));
+    if(drop.style.display === 'block' && !drop.querySelector('.mdrop-empty')) throw new Error('空列表不应展示模型项');
+  });
+  t('换 API 地址清空旧模型列表', ()=>{
+    w.eval("AI.models=['a','b'];AI.base='https://old.com/v1';");
+    const base = d.querySelector('#aiBase');
+    base.value = 'https://new.com/v1';
+    base.oninput({ target:{ value:'https://new.com/v1' } });
+    eq(w.eval('AI.models.join("|")'), '');
+    base.value = 'https://new.com/v1';
+    base.oninput({ target:{ value:'https://new.com/v1' } });   // 相同值不清
+    eq(w.eval('AI.base'), 'https://new.com/v1');
   });
 
   t('aiFetchModels：解析 {data:[{id}]} 并排序去重 + 自动选模型', async ()=>{
@@ -202,9 +240,11 @@ t('导出 JSON 不会被 AI 中间字段污染', ()=>{
     eq(w.eval('AI.model'), 'glm-4-flash');   // 便宜常用的排前面优先选
     eq(asked.url, 'https://a.com/v1/models');
     eq(asked.auth, 'Bearer sk-1');
-    const dl = d.querySelector('#aiModelList');
-    if(!dl || dl.querySelectorAll('option').length !== 3) throw new Error('datalist 未更新');
     if(!/已拉取 3 个模型/.test(d.querySelector('#aiConnStat').textContent)) throw new Error('状态行未更新');
+    // 下拉内容与列表一致（点开验证）
+    const inp = d.querySelector('#aiModel'), drop = d.querySelector('#aiModelDrop');
+    inp.dispatchEvent(new w.Event('focus'));
+    if(drop.querySelectorAll('.mdrop-it').length !== 3) throw new Error('下拉未同步最新列表');
   });
   t('aiFetchModels：兼容字符串数组与 {models:[]} 格式', async ()=>{
     w.eval("AI.model='';delete AI.models;");

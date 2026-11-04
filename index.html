@@ -83,6 +83,22 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
 .f-tip{font-size:11.5px;color:var(--txt3);margin-top:5px;line-height:1.5}
 .f-tip b{color:var(--txt2);font-weight:500}
+/* 模型自绘下拉（datalist 在手机浏览器上不可靠） */
+.mdrop{position:relative}
+.mdrop-list{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:70;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 10px 28px rgba(0,0,0,.45);overflow:hidden;
+}
+.mdrop-hd{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.03)}
+.mdrop-hd input{flex:1;background:transparent;border:0;color:var(--txt);font-size:12.5px;outline:none;padding:2px 0}
+.mdrop-hd .n{font-size:11px;color:var(--txt3);white-space:nowrap}
+.mdrop-items{max-height:236px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mdrop-it{padding:10px 12px;font-size:12.5px;color:var(--txt);border-bottom:1px solid var(--line);cursor:pointer;line-height:1.35;word-break:break-all}
+.mdrop-it:last-child{border-bottom:0}
+.mdrop-it:active{background:rgba(255,255,255,.07)}
+.mdrop-it small{display:block;color:var(--txt3);font-size:10.5px;margin-top:2px}
+.mdrop-empty{padding:16px 12px;text-align:center;font-size:12px;color:var(--txt3)}
 
 /* 开关行 */
 .row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -2098,9 +2114,11 @@ function renderAI(){
       </div>
       <div class="f">
         <div class="f-h"><div class="f-l">模型名</div>${Array.isArray(AI.models) && AI.models.length ? '<span class="badge g">已有列表</span>' : ''}</div>
-        <input type="text" id="aiModel" class="mono" list="aiModelList" placeholder="点「拉取模型列表」自动填，或手动输入" value="${esc(AI.model||'')}">
-        <datalist id="aiModelList">${(Array.isArray(AI.models)?AI.models:[]).slice(0,500).map(m=>`<option value="${esc(m)}">`).join('')}</datalist>
-        <div class="f-tip">便宜快速的模型就够用（做 1 个书源约 4-6 次对话）。填好 Key 后点「拉取模型列表」可以直接选。</div>
+        <div class="mdrop">
+          <input type="text" id="aiModel" class="mono" autocomplete="off" placeholder="点「拉取模型列表」自动填，或手动输入" value="${esc(AI.model||'')}">
+          <div id="aiModelDrop" class="mdrop-list" style="display:none"></div>
+        </div>
+        <div class="f-tip">便宜快速的模型就够用（做 1 个书源约 4-6 次对话）。拉取过列表后，<b>点一下输入框</b>就能弹出全部模型挑选。</div>
       </div>
       <div class="f">
         <div class="f-h"><div class="f-l">API 请求代理（可选）</div></div>
@@ -2140,18 +2158,62 @@ function renderAI(){
   <div id="aiDone"></div>`;
 
   // 绑定
-  $('#aiBase').oninput = e=>{ AI.base = e.target.value.trim(); saveAI(); };
+  $('#aiBase').oninput = e=>{
+    const v = e.target.value.trim();
+    if(v !== AI.base){ AI.base = v; AI.models = []; saveAI(); }   // 换地址清掉旧模型列表，避免串台
+  };
   $('#aiKey').oninput  = e=>{ AI.key  = e.target.value.trim(); saveAI(); };
   $('#aiModel').oninput= e=>{ AI.model= e.target.value.trim(); saveAI(); };
   $('#aiPrefix').oninput=e=>{ AI.prefix=e.target.value.trim(); saveAI(); };
   $('#aiTestConn').onclick = aiTestConn;
   $('#aiFetchModels').onclick = aiFetchModels;
+  bindModelDrop();
   $('#aiExpSw').onclick = e=>{ AISTOP.explore = AISTOP.explore === false ? true : false; e.target.classList.toggle('on', AISTOP.explore !== false); };
   if($('#aiGo')) $('#aiGo').onclick = ()=> aiBuild();
   if($('#aiStop')) $('#aiStop').onclick = ()=>{ AISTOP.stop = true; toast('正在停止…（当前这一步完成后停下）'); };
 }
 
-/** 拉取 /models 模型列表，填进 datalist 供下拉选择 */
+/** 模型名输入框的自绘下拉（原生 datalist 在多数手机浏览器上不生效） */
+function bindModelDrop(){
+  const inp = $('#aiModel'), drop = $('#aiModelDrop');
+  if(!inp || !drop) return;
+  let kw = '';
+
+  const render = ()=>{
+    const all = Array.isArray(AI.models) ? AI.models : [];
+    const list = kw ? all.filter(m=> m.toLowerCase().includes(kw.toLowerCase())) : all;
+    const pick = m=> /flash|mini|lite|free|deepseek-chat|glm-4-flash/i.test(m);
+    const sorted = kw ? list : [...list].sort((a,b)=> (pick(b)-pick(a)) || a.localeCompare(b));
+    drop.innerHTML =
+      `<div class="mdrop-hd"><input type="text" id="aiMdlKw" placeholder="筛选…（共 ${all.length} 个）" value="${esc(kw)}"><span class="n">${list.length ? list.length + ' 个' : ''}</span></div>` +
+      (sorted.length
+        ? `<div class="mdrop-items">${sorted.slice(0,300).map(m=>
+            `<div class="mdrop-it" data-m="${esc(m)}">${esc(m)}${pick(m)?'<small>推荐：便宜快速</small>':''}</div>`).join('')}</div>`
+        : `<div class="mdrop-empty">没有匹配「${esc(kw)}」的模型</div>`);
+    const kwInp = $('#aiMdlKw');
+    kwInp.oninput = e=>{ kw = e.target.value; render(); const k2 = $('#aiMdlKw'); k2.focus(); k2.setSelectionRange(k2.value.length, k2.value.length); };
+    kwInp.onclick = e=> e.stopPropagation();
+    drop.querySelectorAll('.mdrop-it').forEach(it=> it.onclick = e=>{
+      e.stopPropagation();
+      AI.model = it.dataset.m; saveAI();
+      inp.value = AI.model;
+      close();
+    });
+  };
+  const open = ()=>{
+    if(!(Array.isArray(AI.models) && AI.models.length)){ close(); return; }
+    kw = ''; drop.style.display = 'block'; render();
+  };
+  const close = ()=>{ drop.style.display = 'none'; };
+
+  inp.addEventListener('focus', open);
+  inp.addEventListener('click', open);
+  inp.addEventListener('input', ()=>{ AI.model = inp.value.trim(); saveAI(); });
+  document.addEventListener('click', e=>{ if(!e.target.closest || !e.target.closest('.mdrop')) close(); });
+  bindModelDrop.refresh = ()=>{ if(drop.style.display !== 'none') { kw=''; render(); } };
+}
+
+/** 拉取 /models 模型列表，填进自绘下拉供挑选 */
 async function aiFetchModels(){
   if(!clean(AI.base) || !clean(AI.key)) return toast('先填 API 地址和 Key');
   const btn = $('#aiFetchModels'), stat = $('#aiConnStat');
@@ -2168,7 +2230,7 @@ async function aiFetchModels(){
     let list = [];
     arr.forEach(m=>{
       if(typeof m === 'string') list.push(m);
-      else if(m && (m.id || m.name || m.model)) list.push(m.id || m.name || m.model);
+      else if(m && (m.id || m.name || m.model || m.model_name)) list.push(String(m.id || m.name || m.model || m.model_name));
     });
     list = [...new Set(list)].sort((a,b)=> a.localeCompare(b));
     if(!list.length){
@@ -2176,8 +2238,7 @@ async function aiFetchModels(){
       return toast('接口没返回模型列表，请手动填模型名');
     }
     AI.models = list; saveAI();
-    const dl = $('#aiModelList');
-    if(dl) dl.innerHTML = list.slice(0,500).map(m=>`<option value="${esc(m)}">`).join('');
+    if(bindModelDrop.refresh) bindModelDrop.refresh();
     // 没填模型名时，帮用户挑个便宜常用的
     if(!clean(AI.model)){
       const pref = list.find(m=>/flash|mini|lite|free|glm-4-flash|deepseek-chat/i.test(m)) || list[0];
