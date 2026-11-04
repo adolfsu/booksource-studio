@@ -180,6 +180,28 @@
 书源草稿保存在浏览器 localStorage 里，清浏览器数据前请先「下载合集」备份。换设备用「导入」迁移。
 </details>
 
+## 📦 成品书源（免制作直接用）
+
+本仓库附赠一个已做好的书源：**123小说网**（www.bz111111111.com），支持 POST 搜索、分类浏览、5 种排序榜、目录/正文全链路。
+
+提供两个版本：
+
+| 文件 | 特点 |
+|---|---|
+| `书源_123小说网.json` | 净化版：正文字符图片已剔除（约 2-3% 缺字），阅读干净 |
+| `书源_123小说网_带图版.json` | 完整版：文字 100% 完整，缺字以小图片显示；已内置 `imageStyle=TEXT`，图片自动嵌行显示，**无需逐本设置图片样式** |
+
+**导入方式（三选一）：**
+
+1. **二维码导入（最方便）**：阅读 App → 我的 → 书源管理 → 右上角菜单 → 二维码导入，扫 `二维码/` 文件夹里的图片
+2. **网络导入**：书源管理 → 右上角菜单 → 网络导入，粘贴下面的网址：
+   ```
+   https://cdn.jsdelivr.net/gh/adolfsu/booksource-studio@main/书源_123小说网_带图版.json
+   https://cdn.jsdelivr.net/gh/adolfsu/booksource-studio@main/书源_123小说网.json
+   ```
+   （jsDelivr CDN，国内可直连；如果失效可换 raw 地址：`https://raw.githubusercontent.com/adolfsu/booksource-studio/main/…`）
+3. **本地导入**：下载 JSON 文件到手机，书源管理 → 本地导入 选择文件
+
 ## 技术说明
 
 - **单文件**：全部 HTML/CSS/JS 在 `index.html` 内，零依赖、零构建
