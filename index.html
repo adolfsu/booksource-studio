@@ -1999,14 +1999,22 @@ function aiRealSearchUrl(base, searchUrl, keyword){
   return { url:u, opt:sp.opt, isPost: !!(sp.opt && /^post$/i.test(sp.opt.method||'')) };
 }
 
+/** 按配置拼 API 请求地址（支持 ?url= 与 {url} 两种代理前缀） */
+function aiUrlOf(path){
+  let url = clean(AI.base).replace(/\/+$/,'') + path;
+  if(!/^https?:/i.test(url)) url = 'https://' + url;
+  const p = clean(AI.prefix);
+  if(p){
+    if(p.includes('{url}')) url = p.split('{url}').join(encodeURIComponent(url));
+    else if(/[=?&]$/.test(p)) url = p + encodeURIComponent(url);   // 网址参数形式：https://xx/?url=
+    else url = p.replace(/\/+$/,'') + '/' + url;                    // 路径形式：https://xx/api
+  }
+  return url;
+}
+
 async function aiChat(messages, maxTokens){
   if(!clean(AI.base) || !clean(AI.key)) throw new Error('请先在上方填好 API 地址和 API Key');
-  let url = clean(AI.base).replace(/\/+$/,'') + '/chat/completions';
-  if(!/^https?:/i.test(url)) url = 'https://' + url;
-  if(clean(AI.prefix)){
-    const p = clean(AI.prefix);
-    url = p.includes('{url}') ? p.split('{url}').join(encodeURIComponent(url)) : (p.replace(/\/+$/,'') + '/' + url);
-  }
+  const url = aiUrlOf('/chat/completions');
   const ctl = new AbortController();
   const tm = setTimeout(()=>ctl.abort(), 120000);
   try{
@@ -2089,16 +2097,21 @@ function renderAI(){
         <div class="f-tip">只保存在你手机本地（localStorage），不会上传到任何服务器。</div>
       </div>
       <div class="f">
-        <div class="f-h"><div class="f-l">模型名</div></div>
-        <input type="text" id="aiModel" class="mono" placeholder="gpt-4o-mini / deepseek-chat / glm-4-flash …" value="${esc(AI.model||'')}">
-        <div class="f-tip">便宜快速的模型就够用（做 1 个书源约 4-6 次对话）。</div>
+        <div class="f-h"><div class="f-l">模型名</div>${Array.isArray(AI.models) && AI.models.length ? '<span class="badge g">已有列表</span>' : ''}</div>
+        <input type="text" id="aiModel" class="mono" list="aiModelList" placeholder="点「拉取模型列表」自动填，或手动输入" value="${esc(AI.model||'')}">
+        <datalist id="aiModelList">${(Array.isArray(AI.models)?AI.models:[]).slice(0,500).map(m=>`<option value="${esc(m)}">`).join('')}</datalist>
+        <div class="f-tip">便宜快速的模型就够用（做 1 个书源约 4-6 次对话）。填好 Key 后点「拉取模型列表」可以直接选。</div>
       </div>
       <div class="f">
         <div class="f-h"><div class="f-l">API 请求代理（可选）</div></div>
         <input type="text" id="aiPrefix" class="mono" placeholder="https://xxx.workers.dev/?url=" value="${esc(AI.prefix||'')}">
         <div class="f-tip">只有当提示「浏览器无法直连」时才需要。可用仓库里的 <b>worker.js</b> 部署一个（已支持 POST 转发），也支持 <code>{url}</code> 占位符写法。</div>
       </div>
-      <button class="btn gho sm" id="aiTestConn">测试连接</button>
+      <div class="btn-row">
+        <button class="btn gho sm" id="aiFetchModels">拉取模型列表</button>
+        <button class="btn gho sm" id="aiTestConn">测试连接</button>
+      </div>
+      <div class="tiny mt8" id="aiConnStat"></div>
     </details>
   </div>
 
@@ -2132,30 +2145,88 @@ function renderAI(){
   $('#aiModel').oninput= e=>{ AI.model= e.target.value.trim(); saveAI(); };
   $('#aiPrefix').oninput=e=>{ AI.prefix=e.target.value.trim(); saveAI(); };
   $('#aiTestConn').onclick = aiTestConn;
+  $('#aiFetchModels').onclick = aiFetchModels;
   $('#aiExpSw').onclick = e=>{ AISTOP.explore = AISTOP.explore === false ? true : false; e.target.classList.toggle('on', AISTOP.explore !== false); };
   if($('#aiGo')) $('#aiGo').onclick = ()=> aiBuild();
   if($('#aiStop')) $('#aiStop').onclick = ()=>{ AISTOP.stop = true; toast('正在停止…（当前这一步完成后停下）'); };
 }
 
+/** 拉取 /models 模型列表，填进 datalist 供下拉选择 */
+async function aiFetchModels(){
+  if(!clean(AI.base) || !clean(AI.key)) return toast('先填 API 地址和 Key');
+  const btn = $('#aiFetchModels'), stat = $('#aiConnStat');
+  btn.disabled = true; btn.textContent = '拉取中…';
+  if(stat) stat.textContent = '正在拉取模型列表…';
+  try{
+    const res = await fetch(aiUrlOf('/models'), { headers:{ 'Authorization':'Bearer ' + AI.key.trim() } });
+    if(!res.ok){
+      if(stat) stat.textContent = '';
+      return toast('拉取失败：API 返回 ' + res.status + (res.status===401||res.status===403 ? '（Key 无效或无权限）' : ''));
+    }
+    const d = await res.json();
+    const arr = Array.isArray(d) ? d : (Array.isArray(d.data) ? d.data : (Array.isArray(d.models) ? d.models : []));
+    let list = [];
+    arr.forEach(m=>{
+      if(typeof m === 'string') list.push(m);
+      else if(m && (m.id || m.name || m.model)) list.push(m.id || m.name || m.model);
+    });
+    list = [...new Set(list)].sort((a,b)=> a.localeCompare(b));
+    if(!list.length){
+      if(stat) stat.textContent = '';
+      return toast('接口没返回模型列表，请手动填模型名');
+    }
+    AI.models = list; saveAI();
+    const dl = $('#aiModelList');
+    if(dl) dl.innerHTML = list.slice(0,500).map(m=>`<option value="${esc(m)}">`).join('');
+    // 没填模型名时，帮用户挑个便宜常用的
+    if(!clean(AI.model)){
+      const pref = list.find(m=>/flash|mini|lite|free|glm-4-flash|deepseek-chat/i.test(m)) || list[0];
+      AI.model = pref; saveAI();
+      const inp = $('#aiModel'); if(inp) inp.value = pref;
+    }
+    if(stat) stat.textContent = '✓ 已拉取 ' + list.length + ' 个模型' + (clean(AI.model) ? '，当前选中 ' + AI.model : '') + '（在「模型名」输入框点一下可下拉选择）';
+    toast('拉到 ' + list.length + ' 个模型');
+  }catch(e){
+    if(stat) stat.textContent = '';
+    toast(e.name==='AbortError' ? '请求超时' : (e.name==='TypeError' ? '连不上：多为跨域限制，需要填「API 请求代理」' : (e.message||'拉取失败')));
+  }
+  btn.disabled = false; btn.textContent = '拉取模型列表';
+}
+
+/** 测试连接：真实发一条对话，验证 Key 和模型都可用 */
 async function aiTestConn(){
   if(!clean(AI.base) || !clean(AI.key)) return toast('先填 API 地址和 Key');
-  const btn = $('#aiTestConn');
+  const btn = $('#aiTestConn'), stat = $('#aiConnStat');
   btn.disabled = true; btn.textContent = '测试中…';
+  if(stat) stat.textContent = '正在真实发一条消息测试…';
+  const t0 = Date.now();
   try{
-    let url = clean(AI.base).replace(/\/+$/,'') + '/models';
-    if(!/^https?:/i.test(url)) url = 'https://' + url;
-    if(clean(AI.prefix)){
-      const p = clean(AI.prefix);
-      url = p.includes('{url}') ? p.split('{url}').join(encodeURIComponent(url)) : (p.replace(/\/+$/,'') + '/' + url);
+    const res = await fetch(aiUrlOf('/chat/completions'), {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + AI.key.trim() },
+      body: JSON.stringify({
+        model: clean(AI.model) || 'gpt-4o-mini',
+        messages:[{ role:'user', content:'只回复两个字：成功' }],
+        temperature:0, max_tokens:200,
+      }),
+    });
+    const ms = Date.now() - t0;
+    if(!res.ok){
+      const t = await res.text().catch(()=> '');
+      const why = (res.status===401||res.status===403) ? 'Key 无效或无权限'
+                : res.status===404 ? '地址不对（检查是否以 /v1 结尾）'
+                : (res.status===400 && /model/i.test(t)) ? '模型名可能不对：' + (clean(AI.model)||'（未填）')
+                : 'API 返回 ' + res.status;
+      if(stat) stat.textContent = '';
+      return toast('测试失败：' + why + (t ? ' · ' + trunc(t, 120) : ''));
     }
-    const res = await fetch(url, { headers:{ 'Authorization':'Bearer ' + AI.key.trim() } });
-    if(res.ok){
-      let n = '';
-      try{ const d = await res.json(); n = Array.isArray(d.data) ? ('，共 ' + d.data.length + ' 个模型') : ''; }catch(e){}
-      toast('连接成功' + n);
-    }else toast('API 返回 ' + res.status + '（Key 或地址可能不对）');
+    const d = await res.json();
+    const reply = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content || '';
+    if(stat) stat.textContent = '✓ 连接成功 · 耗时 ' + ms + 'ms · 模型回复：' + (trunc(reply, 40) || '（空）');
+    toast('测试通过（' + ms + 'ms）');
   }catch(e){
-    toast(e instanceof TypeError ? '连不上：多为跨域限制，需要填「API 请求代理」' : e.message);
+    if(stat) stat.textContent = '';
+    toast(e.name==='AbortError' ? '请求超时' : (e.name==='TypeError' ? '连不上：多为跨域限制，需要填「API 请求代理」' : (e.message||'测试失败')));
   }
   btn.disabled = false; btn.textContent = '测试连接';
 }

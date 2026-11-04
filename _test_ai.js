@@ -178,6 +178,77 @@ t('导出 JSON 不会被 AI 中间字段污染', ()=>{
     eq(calls, 2);
   });
 
+  // ---- 新增：aiUrlOf / aiFetchModels / aiTestConn ----
+  w.renderAI(); // 重建 DOM（含 datalist 与两个按钮）
+  t('aiUrlOf：三种拼法', ()=>{
+    w.eval("AI.base='https://a.com/v1';AI.prefix='';");
+    eq(w.aiUrlOf('/models'), 'https://a.com/v1/models');
+    w.eval("AI.prefix='https://p.workers.dev/?url=';");
+    eq(w.aiUrlOf('/models'), 'https://p.workers.dev/?url=' + encodeURIComponent('https://a.com/v1/models'));
+    w.eval("AI.prefix='https://p2.workers.dev/api/{url}';");
+    eq(w.aiUrlOf('/models'), 'https://p2.workers.dev/api/' + encodeURIComponent('https://a.com/v1/models'));
+  });
+
+  t('aiFetchModels：解析 {data:[{id}]} 并排序去重 + 自动选模型', async ()=>{
+    w.eval("AI.base='https://a.com/v1';AI.key='sk-1';AI.prefix='';AI.model='';delete AI.models;");
+    let asked;
+    w.fetch = async (url, opts)=>{
+      asked = { url, auth: opts.headers.Authorization };
+      return { ok:true, status:200, json: async ()=>({ data:[{id:'z-model'},{id:'gpt-4o-mini'},{id:'glm-4-flash'},{id:'gpt-4o-mini'}] }) };
+    };
+    await w.aiFetchModels();
+    const models = w.eval('AI.models');
+    eq(models.join('|'), 'glm-4-flash|gpt-4o-mini|z-model');
+    eq(w.eval('AI.model'), 'glm-4-flash');   // 便宜常用的排前面优先选
+    eq(asked.url, 'https://a.com/v1/models');
+    eq(asked.auth, 'Bearer sk-1');
+    const dl = d.querySelector('#aiModelList');
+    if(!dl || dl.querySelectorAll('option').length !== 3) throw new Error('datalist 未更新');
+    if(!/已拉取 3 个模型/.test(d.querySelector('#aiConnStat').textContent)) throw new Error('状态行未更新');
+  });
+  t('aiFetchModels：兼容字符串数组与 {models:[]} 格式', async ()=>{
+    w.eval("AI.model='';delete AI.models;");
+    w.fetch = async ()=> ({ ok:true, status:200, json: async ()=>({ models:['m1','m2'] }) });
+    await w.aiFetchModels();
+    eq(w.eval('AI.models').join('|'), 'm1|m2');
+    w.fetch = async ()=> ({ ok:true, status:200, json: async ()=>(['plain-a','plain-b']) });
+    await w.aiFetchModels();
+    eq(w.eval('AI.models').join('|'), 'plain-a|plain-b');
+  });
+  t('aiFetchModels：401 提示 Key 无效', async ()=>{
+    w.fetch = async ()=> ({ ok:false, status:401, json: async ()=>({}), text: async ()=>'' });
+    // toast 不阻断，只要不抛错即可
+    await w.aiFetchModels();
+    eq(w.eval('AI.models'), undefined);
+  });
+  t('aiFetchModels：空配置直接提示', async ()=>{
+    w.eval("AI.key='';");
+    await w.aiFetchModels(); // 不应抛错
+    w.eval("AI.key='sk-1';");
+  });
+  t('aiTestConn：真实对话成功，显示耗时与回复', async ()=>{
+    w.eval("AI.model='test-model';");
+    w.fetch = async (url, opts)=>{
+      const body = JSON.parse(opts.body);
+      if(!/chat\/completions$/.test(url)) throw new Error('应请求 chat/completions，实际 ' + url);
+      if(body.messages[0].content.indexOf('成功') < 0) throw new Error('测试消息内容不对');
+      return { ok:true, status:200, json: async ()=>({ choices:[{message:{content:'成功'}}] }) };
+    };
+    await w.aiTestConn();
+    if(!/连接成功/.test(d.querySelector('#aiConnStat').textContent)) throw new Error('状态行没有成功提示');
+    if(!/成功/.test(d.querySelector('#aiConnStat').textContent)) throw new Error('没有显示模型回复');
+  });
+  t('aiTestConn：401 显示 Key 无效', async ()=>{
+    w.fetch = async ()=> ({ ok:false, status:401, json: async ()=>({}), text: async ()=>'' });
+    await w.aiTestConn();
+    if(/连接成功/.test(d.querySelector('#aiConnStat').textContent)) throw new Error('不应显示成功');
+  });
+  t('aiTestConn：400+model 字样提示模型名不对', async ()=>{
+    w.fetch = async ()=> ({ ok:false, status:400, json: async ()=>({}), text: async ()=>'{"error":{"message":"Invalid model: xyz"}}' });
+    await w.aiTestConn();
+    // 结果走 toast，这里只需不抛错
+  });
+
   console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
   process.exit(fail ? 1 : 0);
 })();
