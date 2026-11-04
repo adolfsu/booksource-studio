@@ -1,0 +1,62 @@
+[
+  {
+    "bookSourceComment": "123小说网【带图版】· 与主版本的区别：不剔除正文字符图片，被站点图片化的字（约2-3%）会以小图显示，文字完整；缺点是排版里偶有小图夹杂。\n想要纯净文字（约2-3%缺字）请用《123小说网》主版本。\n其余功能（搜索/分类/排序榜）与主版本完全一致。",
+    "bookSourceGroup": "网络小说",
+    "bookSourceName": "123小说网·带图版（缺字显图）",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.bz111111111.com#img",
+    "bookUrlPattern": "",
+    "customOrder": 0,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "exploreUrl": "玄幻::/fenlei/1_{{page}}.html\n仙侠::/fenlei/2_{{page}}.html\n都市::/fenlei/3_{{page}}.html\n穿越::/fenlei/4_{{page}}.html\n科幻::/fenlei/5_{{page}}.html\n藏经阁::/fenlei/6_{{page}}.html\n其他::/fenlei/7_{{page}}.html\n最后更新::/shuku/0-lastupdate-0-{{page}}.html\n总人气榜::/shuku/0-allvisit-0-{{page}}.html\n月人气榜::/shuku/0-monthvisit-0-{{page}}.html\n字数榜::/shuku/0-size-0-{{page}}.html\n新书榜::/shuku/0-postdate-0-{{page}}.html\n完本::/shuku/0-lastupdate-2-{{page}}.html\n连载中::/shuku/0-lastupdate-1-{{page}}.html",
+    "header": "{\"User-Agent\":\"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36\"}",
+    "lastUpdateTime": 1791150000000,
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": "class.detail@class.info@text##作者：|类型：.*",
+      "coverUrl": "",
+      "intro": "class.book-intro@class.bd@text",
+      "kind": "class.status@text",
+      "lastChapter": "class.chapter-list.0@tag.li.0@tag.a@text",
+      "name": "class.detail@tag.h1@text"
+    },
+    "ruleContent": {
+      "content": "class.page-content@html",
+      "nextContentUrl": "",
+      "replaceRegex": ""
+    },
+    "ruleExplore": {
+      "author": "class.info@text##作者：|字数：.*|更新：.*",
+      "bookList": "class.book-all-list@tag.li",
+      "bookUrl": "class.name@href",
+      "coverUrl": "",
+      "intro": "",
+      "kind": "",
+      "lastChapter": "class.update@tag.a.0@text",
+      "name": "class.name@text"
+    },
+    "ruleSearch": {
+      "author": "class.info@text##作者：|字数：.*",
+      "bookList": "class.book-all-list@tag.li",
+      "bookUrl": "class.name@href",
+      "checkKeyWord": "斗破苍穹",
+      "coverUrl": "",
+      "intro": "",
+      "kind": "",
+      "lastChapter": "class.update@tag.a.0@text",
+      "name": "class.name@text"
+    },
+    "ruleToc": {
+      "chapterList": "class.chapter-list.1@tag.li",
+      "chapterName": "tag.a@text",
+      "chapterUrl": "tag.a@href",
+      "isVolume": "",
+      "nextTocUrl": "class.nextPage@href",
+      "updateTime": ""
+    },
+    "searchUrl": "/s.php,{\"method\":\"POST\",\"body\":\"objectType=2&s={{key}}&page={{page}}\",\"charset\":\"gbk\"}",
+    "weight": 0
+  }
+]
