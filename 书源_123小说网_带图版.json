@@ -25,7 +25,7 @@
     "ruleContent": {
       "content": "class.page-content@html",
       "imageStyle": "TEXT",
-      "nextContentUrl": "class.chapterPages@tag.a.-1@href",
+      "nextContentUrl": "<js>var u=String(baseUrl),m=u.match(/(\\d+)(?:_(\\d+))?\\.html/),cur=m[2]?parseInt(m[2]):1,s=String(src),c=s.match(/chapterPages[\\s\\S]{0,2000}?<\\/center>/),max=1;if(c){var a=c[0].match(/_(\\d+)\\.html/g);if(a)max=parseInt(a[a.length-1].replace(/\\D/g,''))}var nx='';if(cur<max)nx=u.replace(/(\\d+)(?:_\\d+)?\\.html.*$/,'$1_'+(cur+1)+'.html');nx;</js>",
       "replaceRegex": ""
     },
     "ruleExplore": {
