@@ -25,7 +25,7 @@
     "ruleContent": {
       "content": "class.page-content@html",
       "imageStyle": "TEXT",
-      "nextContentUrl": "",
+      "nextContentUrl": "class.chapterPages@tag.a.-1@href",
       "replaceRegex": ""
     },
     "ruleExplore": {
